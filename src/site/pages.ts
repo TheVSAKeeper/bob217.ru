@@ -34,10 +34,19 @@ const PAGES = {
     path: '/resume',
     title: 'Резюме – bob217',
     description:
-      'Резюме bobito217 как вывод git reflog: опыт, стек и проекты на C# и .NET по записям истории.',
+      'Трудовой путь bobito217 как git log по веткам: места работы, роли, стек на C# и .NET, образование и навыки.',
     navLabel: 'Резюме',
-    sectionSummary: 'опыт и стек как вывод git reflog',
+    sectionSummary: 'трудовой путь как git log по веткам',
     priority: 0.8,
+  },
+  works: {
+    path: '/works',
+    title: 'Заказы и поделки – bob217',
+    description:
+      'Заказы, подработки и проекты для души от bobito217 как вывод git reflog: гексапод, фармацевтическая ИС, браузерная игра и шахматы с плагинами.',
+    navLabel: 'Заказы',
+    sectionSummary: 'заказы и поделки как вывод git reflog',
+    priority: 0.7,
   },
   about: {
     path: '/about',
@@ -147,6 +156,7 @@ const SECTION_ORDER: readonly SitePageName[] = [
   'releases',
   'repos',
   'resume',
+  'works',
   'about',
   'donate',
   'tarkov',

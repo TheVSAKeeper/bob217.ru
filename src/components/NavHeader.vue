@@ -13,6 +13,7 @@ import {
   CircleDot,
   Network,
   Package,
+  FolderGit2,
   type LucideIcon,
 } from 'lucide-vue-next'
 import { NAV_PAGES, type NavPageName } from '@/site/pages'
@@ -26,6 +27,7 @@ const NAV_ICONS: Record<NavPageName, LucideIcon> = {
   home: Home,
   donate: Heart,
   resume: FileText,
+  works: FolderGit2,
   about: Info,
   log: GitCommitHorizontal,
   pulls: GitPullRequest,

@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import type { ResumeRow } from '@/composables/useResumeLog'
+import type { WorkRow } from '@/composables/useWorkLog'
 import { useScramble } from '@/composables/useScramble'
 
 const props = defineProps<{
-  row: ResumeRow
+  row: WorkRow
   index: number
 }>()
 
@@ -21,6 +21,7 @@ const hash = useScramble(props.row.hash, 200 + Math.min(props.index * 40, 400))
       <p class="meta">
         <span class="hash">{{ hash }}</span>
         <span class="ptr">{{ row.pointer }}</span>
+        <span class="kind" :class="row.entry.kind">{{ row.kindLabel }}</span>
         <i class="fill" aria-hidden="true"></i>
         <span v-if="index === 0" class="badge">HEAD</span>
       </p>
@@ -184,6 +185,18 @@ const hash = useScramble(props.row.hash, 200 + Math.min(props.index * 40, 400))
 
 .ptr {
   letter-spacing: 0.04em;
+}
+
+.kind {
+  letter-spacing: 0.04em;
+}
+
+.kind.order {
+  color: var(--color-link);
+}
+
+.kind.hired {
+  color: var(--color-accent);
 }
 
 .fill {

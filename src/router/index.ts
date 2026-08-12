@@ -17,6 +17,7 @@ const VIEWS: Record<SitePageName, RouteRecordSingleView['component']> = {
   home: HomeView,
   donate: () => import('../views/DonateView.vue'),
   resume: () => import('../views/ResumeView.vue'),
+  works: () => import('../views/WorksView.vue'),
   about: () => import('../views/AboutView.vue'),
   log: () => import('../views/LogView.vue'),
   pulls: () => import('../views/PullRequestsView.vue'),
