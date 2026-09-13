@@ -6,6 +6,9 @@ import { drawChip, MONO } from './text'
 import type { Frame, Node } from './types'
 
 const LABEL_ZOOM = 1.3
+const LABEL_DEPTH = 0.8
+const NEAR_FROM = 1.12
+const NEAR_FULL = 1.27
 
 const nodeAlpha = (f: Frame, n: Node): number => {
   if (f.hardOut(n)) return 0.12
@@ -68,16 +71,23 @@ export const paintNodes = (f: Frame): void => {
 
 export const paintNodeLabels = (f: Frame): void => {
   const { ctx, vp } = f
-  if (vp.cam.s < LABEL_ZOOM || (!f.reduce && f.age(0) < DOLLY_MS)) return
-  const zoomIn = Math.min(1, (vp.cam.s - LABEL_ZOOM) / 0.3)
+  if (!f.reduce && f.age(0) < DOLLY_MS) return
+  const near = !vp.flat()
+  if (vp.cam.s < LABEL_ZOOM && !near) return
+  const zoomIn = clamp01((vp.cam.s - LABEL_ZOOM) / 0.3)
   ctx.save()
   ctx.font = `10px ${MONO}`
   for (const n of f.nodes) {
     const intro = f.intro(n.introDelay, 420)
     if (intro <= 0 || f.hardOut(n)) continue
     const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+    if (dz < LABEL_DEPTH && !f.bright.has(n)) continue
+    const show = near
+      ? Math.max(zoomIn, clamp01((dz - NEAR_FROM) / (NEAR_FULL - NEAR_FROM)))
+      : zoomIn
+    if (show <= 0) continue
     const nr = f.nodeRadius(n) * vp.cam.s * dz
-    ctx.globalAlpha = zoomIn * intro * depthAlpha(dz) * (f.hover && f.hover !== n ? 0.5 : 1)
+    ctx.globalAlpha = show * intro * depthAlpha(dz) * (f.hover && f.hover !== n ? 0.5 : 1)
     drawChip(ctx, n.repo.name, sx, sy + nr + 7, f.hover === n ? '#fff' : '#c9c9c9')
   }
   ctx.restore()

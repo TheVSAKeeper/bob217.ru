@@ -1,5 +1,5 @@
 import { OWNER } from '@/composables/useForkMap'
-import { easeOut, TAU } from './math'
+import { depthAlpha, easeOut, TAU } from './math'
 import { blit, glowSprite, spikeSprite } from './sprites'
 import { drawTracked, hairline, MONO } from './text'
 import type { Viewport } from './camera'
@@ -22,13 +22,14 @@ const ringPath = (vp: Viewport, ctx: CanvasRenderingContext2D, rad: number): voi
 export const paintPulse = (f: Frame): void => {
   if (f.reduce) return
   const { ctx, vp } = f
-  const [hsx, hsy] = vp.w2s(0, 0)
+  const [hsx, hsy, hdz] = vp.w2s(0, 0)
+  const haze = depthAlpha(hdz)
   const ring = (age: number, width: number, alpha: number): void => {
     if (age < 0 || age >= PULSE_MS) return
     const p = age / PULSE_MS
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
-    ctx.globalAlpha = (1 - p) * alpha
+    ctx.globalAlpha = (1 - p) * alpha * haze
     ctx.strokeStyle = ACCENT
     ctx.lineWidth = width
     const rad = easeOut(p) * vp.R * 1.15
@@ -50,17 +51,18 @@ export const paintCore = (f: Frame): void => {
   const [hsx, hsy, hdz] = vp.w2s(0, 0)
   const cr = (CORE_BASE + (f.hoverCore ? 5 : 0)) * vp.cam.s * hdz * intro
   const breathe = f.reduce ? 1 : 1 + 0.035 * Math.sin(f.now / 1400)
+  const lit = intro * depthAlpha(hdz)
 
   ctx.save()
   ctx.globalCompositeOperation = 'lighter'
-  blit(ctx, glowSprite(ACCENT), hsx, hsy, cr * 5.2 * breathe, (f.hoverCore ? 0.75 : 0.55) * intro)
+  blit(ctx, glowSprite(ACCENT), hsx, hsy, cr * 5.2 * breathe, (f.hoverCore ? 0.75 : 0.55) * lit)
   ctx.translate(hsx, hsy)
   if (!f.reduce) ctx.rotate((f.now / 62000) * TAU)
-  blit(ctx, spikeSprite(ACCENT), 0, 0, cr * 5.4 * breathe, 0.32 * intro)
+  blit(ctx, spikeSprite(ACCENT), 0, 0, cr * 5.4 * breathe, 0.32 * lit)
   ctx.restore()
 
   ctx.save()
-  ctx.globalAlpha = intro
+  ctx.globalAlpha = lit
   const grad = ctx.createRadialGradient(hsx, hsy, 0, hsx, hsy, cr)
   grad.addColorStop(0, '#fffdf2')
   grad.addColorStop(0.42, '#ffdb4d')
@@ -72,7 +74,7 @@ export const paintCore = (f: Frame): void => {
   ctx.restore()
 
   ctx.save()
-  ctx.globalAlpha = (f.hoverCore ? 0.55 : 0.3) * intro
+  ctx.globalAlpha = (f.hoverCore ? 0.55 : 0.3) * lit
   ctx.strokeStyle = ACCENT
   ctx.lineWidth = 1
   ctx.setLineDash([4, 9])
@@ -83,13 +85,13 @@ export const paintCore = (f: Frame): void => {
   ctx.restore()
 
   ctx.save()
-  ctx.globalAlpha = (f.hoverCore ? 1 : 0.75) * intro
+  ctx.globalAlpha = (f.hoverCore ? 1 : 0.75) * lit
   ctx.fillStyle = f.hoverCore ? '#fff' : '#d8d8d8'
   ctx.font = `700 12px ${MONO}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   const width = drawTracked(ctx, `@${OWNER}`, hsx, hsy + cr + 20, 2.2)
-  ctx.globalAlpha = 0.4 * intro
+  ctx.globalAlpha = 0.4 * lit
   hairline(ctx, hsx, hsy + cr + 29, width, ACCENT)
   ctx.restore()
 }

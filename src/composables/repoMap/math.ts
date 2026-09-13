@@ -13,7 +13,7 @@ export const mulberry32 = (a: number) => (): number => {
 
 export const clamp01 = (t: number): number => (t < 0 ? 0 : t > 1 ? 1 : t)
 
-const DEPTH_DIM = 0.25
+const DEPTH_DIM = 0.55
 
 export const depthAlpha = (dz: number): number =>
   1 - DEPTH_DIM + DEPTH_DIM * clamp01((dz - (1 - DEPTH_DIM)) / DEPTH_DIM)

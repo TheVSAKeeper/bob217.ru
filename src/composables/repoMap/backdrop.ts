@@ -7,6 +7,7 @@ interface Star {
   r: number
   a: number
   depth: number
+  layer: number
   tw: number
 }
 
@@ -14,7 +15,21 @@ const STAR_COUNT = 320
 const NEB_TEX = 512
 const NEB_SPAN = 3.6
 const DEEP = '#2b3a7a'
-const SKY_YAW = 0.35
+const STAR_DEPTH_MIN = 0.2
+const STAR_DEPTH_SPAN = 0.55
+const SKY_LAYERS = [
+  { yaw: 0.18, pitch: 0.05 },
+  { yaw: 0.35, pitch: 0.1 },
+  { yaw: 0.62, pitch: 0.18 },
+]
+const NEB_YAW_PX = 12
+const NEB_PITCH_PX = 18
+
+const layerOf = (depth: number): number =>
+  Math.min(
+    SKY_LAYERS.length - 1,
+    Math.floor(((depth - STAR_DEPTH_MIN) / STAR_DEPTH_SPAN) * SKY_LAYERS.length),
+  )
 
 export interface Backdrop {
   build: (rnd: () => number, anchors: Anchor[], R: number) => void
@@ -33,13 +48,14 @@ export const createBackdrop = (): Backdrop => {
     stars = Array.from({ length: STAR_COUNT }, () => {
       const ang = rnd() * Math.PI * 2
       const rad = Math.sqrt(rnd()) * R * 2.6
-      const depth = 0.2 + rnd() * 0.55
+      const depth = STAR_DEPTH_MIN + rnd() * STAR_DEPTH_SPAN
       return {
         x: Math.cos(ang) * rad,
         y: Math.sin(ang) * rad,
         r: 0.5 + rnd() * 1.3,
         a: 0.12 + rnd() * 0.5,
         depth,
+        layer: layerOf(depth),
         tw: rnd() * Math.PI * 2,
       }
     })
@@ -110,6 +126,7 @@ export const createBackdrop = (): Backdrop => {
       } else {
         const [ex, ey] = vp.w2s(span / 2, -span / 2)
         const [fx, fy] = vp.w2s(-span / 2, span / 2)
+        ctx.translate(NEB_YAW_PX * Math.sin(vp.eyaw()), NEB_PITCH_PX * Math.sin(cam.pitch))
         ctx.transform(
           (ex - nx) / span,
           (ey - ny) / span,
@@ -125,14 +142,20 @@ export const createBackdrop = (): Backdrop => {
 
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
-    const skyCos = Math.cos(cam.yaw * SKY_YAW)
-    const skySin = Math.sin(cam.yaw * SKY_YAW)
+    const yaw = vp.eyaw()
+    const sp = Math.sin(cam.pitch)
+    const sky = SKY_LAYERS.map((l) => ({
+      cos: Math.cos(yaw * l.yaw),
+      sin: Math.sin(yaw * l.yaw),
+      dy: sp * l.pitch * H,
+    }))
     for (const s of stars) {
       const sd = 1 + (cam.s - 1) * s.depth
       const px = s.x - cam.x * s.depth
       const py = s.y - cam.y * s.depth
-      const x = (px * skyCos - py * skySin) * sd + W / 2
-      const y = (px * skySin + py * skyCos) * sd + H / 2
+      const l = sky[s.layer]!
+      const x = (px * l.cos - py * l.sin) * sd + W / 2
+      const y = (px * l.sin + py * l.cos) * sd + H / 2 + l.dy
       if (x < -4 || y < -4 || x > W + 4 || y > H + 4) continue
       const tw = f.reduce ? 1 : 0.72 + 0.28 * Math.sin(f.now / 780 + s.tw)
       ctx.globalAlpha = clamp01(s.a * tw * fade)

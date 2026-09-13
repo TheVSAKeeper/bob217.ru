@@ -2,10 +2,14 @@ import { readonly, ref, watch, type Ref } from 'vue'
 import type { Repo, SizeBy } from '@/composables/useForkMap'
 import { createBackdrop } from '@/composables/repoMap/backdrop'
 import {
+  ARC_MS,
+  arcSpin,
   clampPitch,
   createViewport,
   dollyScale,
   DOLLY_MS,
+  DRIFT_HOLD_MS,
+  DRIFT_RAD_PER_S,
   FOCAL_K,
   followTargets,
   ORBIT_PITCH,
@@ -20,6 +24,7 @@ import { paintConstellations, paintDomainLabels } from '@/composables/repoMap/pa
 import { paintCore, paintPulse, PULSE_MS } from '@/composables/repoMap/paintCore'
 import { paintFlow, paintSatellites } from '@/composables/repoMap/paintFlow'
 import { paintNodeLabels, paintNodes } from '@/composables/repoMap/paintNodes'
+import { paintPlane } from '@/composables/repoMap/paintPlane'
 import {
   pickCore,
   pickDomain,
@@ -100,6 +105,10 @@ export function useRepoMapScene(params: SceneParams) {
   let pulseStart = -1e9
   let brightAt = -1e9
   let dolly = true
+  let arcStart = -1e9
+  let driftHold = -1e9
+  let hidden = false
+  let hiddenAt = 0
 
   const maxMetric: Record<SizeBy, number> = { stars: 1, forks: 1, merged: 1, size: 1, commits: 1 }
 
@@ -169,6 +178,18 @@ export function useRepoMapScene(params: SceneParams) {
     if (t < 0 || t >= PULSE_MS) return 0
     const front = easeOut(t / PULSE_MS) * vp.R * 1.15
     return Math.max(0, 1 - Math.abs(dist - front) / WAVE_WIDTH)
+  }
+
+  const drifting = (): boolean =>
+    view.value === 'orbit' &&
+    !reduce &&
+    !hidden &&
+    !focusNode &&
+    nowMs >= driftHold &&
+    nowMs - arcStart >= ARC_MS
+
+  const holdDrift = (): void => {
+    driftHold = nowMs + DRIFT_HOLD_MS
   }
 
   const nodeDepth = (n: Node): number => vp.w2s(n.bx + n.ox, n.by + n.oy)[2]
@@ -313,7 +334,14 @@ export function useRepoMapScene(params: SceneParams) {
       dolly = false
       vp.cam.ts = 1
     }
+    vp.cam.spin = reduce ? 0 : arcSpin(nowMs - arcStart)
+    if (drifting()) {
+      const step = DRIFT_RAD_PER_S * dt
+      vp.cam.yaw += step
+      vp.cam.tyaw += step
+    }
     followTargets(vp.cam, dt)
+    if (cursor && drifting() && !dragging && !panning && !orbiting) pickAt(cursor[0], cursor[1])
     emitParticles(dt)
   }
 
@@ -322,6 +350,7 @@ export function useRepoMapScene(params: SceneParams) {
     const f = frame()
     ctx.clearRect(0, 0, vp.W, vp.H)
     backdrop.draw(f)
+    paintPlane(f)
     paintConstellations(f)
     paintFlow(f)
     paintSatellites(f)
@@ -381,6 +410,8 @@ export function useRepoMapScene(params: SceneParams) {
   const viewPitch = (): number => (view.value === 'orbit' ? ORBIT_PITCH : 0)
 
   const snapView = (): void => {
+    arcStart = -1e9
+    vp.cam.spin = 0
     vp.cam.yaw = vp.cam.tyaw = 0
     vp.cam.pitch = vp.cam.tpitch = viewPitch()
   }
@@ -392,6 +423,9 @@ export function useRepoMapScene(params: SceneParams) {
     dolly = false
     vp.cam.tyaw = 0
     vp.cam.tpitch = viewPitch()
+    arcStart = v === 'orbit' && !reduce ? nowMs : -1e9
+    if (arcStart < 0) vp.cam.spin = 0
+    driftHold = -1e9
     if (reduce) snapView()
   }
 
@@ -528,6 +562,7 @@ export function useRepoMapScene(params: SceneParams) {
   let moved = false
   let satDown: SatHit | null = null
   let coreDown = false
+  let cursor: [number, number] | null = null
 
   const localXY = (e: { clientX: number; clientY: number }): [number, number] => {
     const rect = canvas.getBoundingClientRect()
@@ -568,26 +603,8 @@ export function useRepoMapScene(params: SceneParams) {
     }
   }
 
-  const onMove = (e: MouseEvent): void => {
-    const [sx, sy] = localXY(e)
+  const pickAt = (sx: number, sy: number): void => {
     const c = pickCtx()
-    if (dragging && dragNode) {
-      dragW = vp.s2w(sx, sy)
-      moved = true
-      return
-    }
-    if (orbiting) {
-      orbitBy(sx - panStart[0], sy - panStart[1])
-      panStart = [sx, sy]
-      moved = true
-      return
-    }
-    if (panning) {
-      panBy(panStart, sx, sy)
-      panStart = [sx, sy]
-      moved = true
-      return
-    }
     const n = pickNode(c, sx, sy)
     hover = n
     if (n) {
@@ -595,7 +612,7 @@ export function useRepoMapScene(params: SceneParams) {
       hoverCore = false
       hoverDomain = null
       canvas.classList.add('pointing')
-      if (!focusNode) showTip(n, false)
+      if (!focusNode && tipNode !== n) showTip(n, false)
       return
     }
     if (focusNode) {
@@ -637,7 +654,35 @@ export function useRepoMapScene(params: SceneParams) {
     hideTip()
   }
 
+  const onMove = (e: MouseEvent): void => {
+    const [sx, sy] = localXY(e)
+    cursor = [sx, sy]
+    if (dragging && dragNode) {
+      dragW = vp.s2w(sx, sy)
+      moved = true
+      return
+    }
+    if (orbiting) {
+      orbitBy(sx - panStart[0], sy - panStart[1])
+      panStart = [sx, sy]
+      moved = true
+      return
+    }
+    if (panning) {
+      panBy(panStart, sx, sy)
+      panStart = [sx, sy]
+      moved = true
+      return
+    }
+    pickAt(sx, sy)
+  }
+
+  const onLeave = (): void => {
+    cursor = null
+  }
+
   const onDown = (e: MouseEvent): void => {
+    holdDrift()
     moved = false
     satDown = null
     coreDown = false
@@ -698,6 +743,7 @@ export function useRepoMapScene(params: SceneParams) {
 
   const onWheel = (e: WheelEvent): void => {
     e.preventDefault()
+    holdDrift()
     dolly = false
     const [sx, sy] = localXY(e)
     const [wx, wy] = vp.s2w(sx, sy)
@@ -729,6 +775,7 @@ export function useRepoMapScene(params: SceneParams) {
   }
 
   const onTouchStart = (e: TouchEvent): void => {
+    holdDrift()
     if (e.targetTouches.length >= 2) {
       startPinch(e)
       return
@@ -797,6 +844,7 @@ export function useRepoMapScene(params: SceneParams) {
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.ctrlKey || e.altKey || e.metaKey) return
     if (e.key === 'Home') {
+      holdDrift()
       resetHome()
       e.preventDefault()
       return
@@ -822,8 +870,18 @@ export function useRepoMapScene(params: SceneParams) {
       default:
         return
     }
+    holdDrift()
     dolly = false
     e.preventDefault()
+  }
+
+  const onVisibility = (): void => {
+    const next = document.visibilityState === 'hidden'
+    if (next === hidden) return
+    const wall = performance.now()
+    if (next) hiddenAt = wall
+    else if (hiddenAt - T0 - arcStart < ARC_MS) arcStart += wall - hiddenAt
+    hidden = next
   }
 
   const mount = (el: HTMLCanvasElement): (() => void) => {
@@ -839,8 +897,11 @@ export function useRepoMapScene(params: SceneParams) {
     introBase = 0
     vp.cam.s = vp.cam.ts = reduce ? 1 : dollyScale(0)
     snapView()
+    onVisibility()
     window.addEventListener('resize', layout)
+    document.addEventListener('visibilitychange', onVisibility)
     canvas.addEventListener('mousemove', onMove)
+    canvas.addEventListener('mouseleave', onLeave)
     canvas.addEventListener('mousedown', onDown)
     canvas.addEventListener('contextmenu', onContextMenu)
     window.addEventListener('mouseup', onUp)
@@ -856,7 +917,9 @@ export function useRepoMapScene(params: SceneParams) {
       mounted = false
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', layout)
+      document.removeEventListener('visibilitychange', onVisibility)
       canvas.removeEventListener('mousemove', onMove)
+      canvas.removeEventListener('mouseleave', onLeave)
       canvas.removeEventListener('mousedown', onDown)
       canvas.removeEventListener('contextmenu', onContextMenu)
       window.removeEventListener('mouseup', onUp)
