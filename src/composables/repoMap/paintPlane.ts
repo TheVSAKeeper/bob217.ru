@@ -1,5 +1,6 @@
 import { DOMAINS } from '@/composables/useForkMap'
 import { D2R, depthAlpha, TAU, withAlpha, type Point } from './math'
+import { paintOnPlane } from './planeMesh'
 import type { Frame } from './types'
 
 const GRID = '#00bcd4'
@@ -14,6 +15,7 @@ const WEDGE_MID = 0.6
 const WEDGE_STEPS = 12
 const POOL_ALPHA = 0.1
 const POOL_FRAC = 0.5
+const POOL_GRID = 4
 const FADE_MS = 900
 
 const HALF_ARC = new Map(DOMAINS.map((d) => [d.key, (d.width / 2) * D2R]))
@@ -87,23 +89,6 @@ const strokeRings = (f: Frame, rings: Point[][], d: Depth, fade: number): void =
   ctx.restore()
 }
 
-type PlaneMat = [number, number, number, number, number, number]
-
-const planeMat = (f: Frame): PlaneMat | null => {
-  const { vp } = f
-  const L = vp.R
-  const [ox, oy] = vp.w2s(0, 0)
-  const [xx, xy] = vp.w2s(L, 0)
-  const [yx, yy] = vp.w2s(0, L)
-  const m: PlaneMat = [(xx - ox) / L, (xy - oy) / L, (yx - ox) / L, (yy - oy) / L, ox, oy]
-  return m.every(Number.isFinite) ? m : null
-}
-
-const usePlane = (ctx: CanvasRenderingContext2D, m: PlaneMat, kx: number): void => {
-  ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5])
-  ctx.scale(kx, 1)
-}
-
 const paintWedges = (f: Frame, fade: number): void => {
   const { ctx, vp } = f
   const rim = (ang: number, rad: number): Point => {
@@ -136,21 +121,21 @@ const paintWedges = (f: Frame, fade: number): void => {
   }
 }
 
-const paintPool = (f: Frame, m: PlaneMat, fade: number): void => {
+const paintPool = (f: Frame, fade: number): void => {
   const { ctx, vp } = f
   const rad = POOL_FRAC * vp.R
   const alpha = POOL_ALPHA * fade * (f.hoverCore ? 1.6 : 1)
-  ctx.save()
-  ctx.globalCompositeOperation = 'lighter'
-  usePlane(ctx, m, vp.kx)
   const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, rad)
   grad.addColorStop(0, withAlpha(ACCENT, alpha))
   grad.addColorStop(0.45, withAlpha(ACCENT, alpha * 0.45))
   grad.addColorStop(1, withAlpha(ACCENT, 0))
-  ctx.fillStyle = grad
-  ctx.beginPath()
-  ctx.arc(0, 0, rad, 0, TAU)
-  ctx.fill()
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  paintOnPlane(f, rad * vp.kx, rad, POOL_GRID, (c, x, y, w, h) => {
+    c.scale(vp.kx, 1)
+    c.fillStyle = grad
+    c.fillRect(x / vp.kx, y, w / vp.kx, h)
+  })
   ctx.restore()
 }
 
@@ -159,11 +144,9 @@ export const paintPlane = (f: Frame): void => {
   if (vp.flat() || vp.R <= 1) return
   const fade = f.intro(0, FADE_MS)
   if (fade <= 0) return
-  const m = planeMat(f)
-  if (!m) return
   const d: Depth = { yLo: Infinity, yHi: -Infinity, dzLo: 1, dzHi: 1 }
   const rings = ringPoints(f, d)
   paintWedges(f, fade)
-  paintPool(f, m, fade)
+  paintPool(f, fade)
   if (d.yHi - d.yLo > 1) strokeRings(f, rings, d, fade)
 }

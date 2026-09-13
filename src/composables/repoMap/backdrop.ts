@@ -1,5 +1,5 @@
-import { DEPTH_MAX, type Projected } from './camera'
 import { clamp01, mixHex, withAlpha } from './math'
+import { paintOnPlane } from './planeMesh'
 import type { Anchor, Frame } from './types'
 
 interface Star {
@@ -112,73 +112,19 @@ export const createBackdrop = (): Backdrop => {
   }
 
   const paintTiles = (f: Frame, tex: HTMLCanvasElement): void => {
-    const { ctx, vp } = f
-    const { W, H } = vp
-    const ox = NEB_YAW_PX * Math.sin(vp.eyaw())
-    const oy = NEB_PITCH_PX * Math.sin(vp.cam.pitch)
-    const cols = NEB_GRID + 1
-    const step = span / NEB_GRID
-    const grid: Projected[] = []
-    for (let j = 0; j < cols; j++) {
-      for (let i = 0; i < cols; i++) {
-        const [x, y, dz] = vp.w2s(-span / 2 + i * step, -span / 2 + j * step)
-        grid.push([x + ox, y + oy, dz])
-      }
-    }
-
-    const tile = NEB_TEX / NEB_GRID
-    const shard = (tri: Projected[], m: number[], sx: number, sy: number): void => {
-      if (tri.some((p) => p[2] >= DEPTH_MAX)) return
-      ctx.save()
-      ctx.beginPath()
-      ctx.moveTo(tri[0]![0], tri[0]![1])
-      ctx.lineTo(tri[1]![0], tri[1]![1])
-      ctx.lineTo(tri[2]![0], tri[2]![1])
-      ctx.closePath()
-      ctx.clip()
-      ctx.transform(m[0]!, m[1]!, m[2]!, m[3]!, m[4]!, m[5]!)
-      ctx.drawImage(tex, sx, sy, tile, tile, 0, 0, tile, tile)
-      ctx.restore()
-    }
-
-    for (let j = 0; j < NEB_GRID; j++) {
-      for (let i = 0; i < NEB_GRID; i++) {
-        const a = grid[j * cols + i]!
-        const b = grid[j * cols + i + 1]!
-        const c = grid[(j + 1) * cols + i]!
-        const d = grid[(j + 1) * cols + i + 1]!
-        if (Math.max(a[0], b[0], c[0], d[0]) < 0 || Math.min(a[0], b[0], c[0], d[0]) > W) continue
-        if (Math.max(a[1], b[1], c[1], d[1]) < 0 || Math.min(a[1], b[1], c[1], d[1]) > H) continue
-        const sx = i * tile
-        const sy = j * tile
-        shard(
-          [a, b, c],
-          [
-            (b[0] - a[0]) / tile,
-            (b[1] - a[1]) / tile,
-            (c[0] - a[0]) / tile,
-            (c[1] - a[1]) / tile,
-            a[0],
-            a[1],
-          ],
-          sx,
-          sy,
-        )
-        shard(
-          [b, d, c],
-          [
-            (d[0] - c[0]) / tile,
-            (d[1] - c[1]) / tile,
-            (d[0] - b[0]) / tile,
-            (d[1] - b[1]) / tile,
-            b[0] + c[0] - d[0],
-            b[1] + c[1] - d[1],
-          ],
-          sx,
-          sy,
-        )
-      }
-    }
+    const { vp } = f
+    const k = NEB_TEX / span
+    paintOnPlane(
+      f,
+      span / 2,
+      span / 2,
+      NEB_GRID,
+      (ctx, x, y, w, h) => {
+        ctx.drawImage(tex, (x + span / 2) * k, (y + span / 2) * k, w * k, h * k, x, y, w, h)
+      },
+      NEB_YAW_PX * Math.sin(vp.eyaw()),
+      NEB_PITCH_PX * Math.sin(vp.cam.pitch),
+    )
   }
 
   const draw = (f: Frame): void => {
