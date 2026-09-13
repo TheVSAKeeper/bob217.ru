@@ -6,6 +6,7 @@ import MapBoot from '@/components/repomap/MapBoot.vue'
 import MapControls from '@/components/repomap/MapControls.vue'
 import MapCounter from '@/components/repomap/MapCounter.vue'
 import MapLegend from '@/components/repomap/MapLegend.vue'
+import MapNodeList from '@/components/repomap/MapNodeList.vue'
 import RepoTip from '@/components/repomap/RepoTip.vue'
 import { useForkMap, type SizeBy } from '@/composables/useForkMap'
 import { useRepoMapScene } from '@/composables/useRepoMapScene'
@@ -30,13 +31,14 @@ const flowLayer = ref(false)
 const langOff = ref<Set<string>>(new Set())
 const sizeBy = ref<SizeBy>('stars')
 
-const { tip, satTip, coreTip, counter, mount, pulse, rebuild } = useRepoMapScene({
-  repos,
-  filt,
-  flowLayer,
-  langOff,
-  sizeBy,
-})
+const { tip, satTip, coreTip, counter, mount, pulse, rebuild, focusRepo, resetHome } =
+  useRepoMapScene({
+    repos,
+    filt,
+    flowLayer,
+    langOff,
+    sizeBy,
+  })
 
 const canvas = ref<HTMLCanvasElement | null>(null)
 const stage = ref<HTMLElement | null>(null)
@@ -93,6 +95,13 @@ const sizeHint = computed(() => {
 
 const forkedCount = computed(() => repos.value.filter((r) => r.forks > 0).length)
 
+const visibleRepos = computed(() =>
+  repos.value.filter((r) => {
+    if (filt.value === 'forked' && r.forks === 0) return false
+    return !(langOff.value.size > 0 && langOff.value.has(r.lang))
+  }),
+)
+
 const booting = computed(() => loadStage.value === 'repos' || loadStage.value === 'pulls')
 
 let scanTimer: number | undefined
@@ -120,7 +129,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="stage" class="stage">
-    <canvas ref="canvas" class="map-canvas"></canvas>
+    <canvas
+      ref="canvas"
+      class="map-canvas"
+      role="img"
+      aria-label="карта репозиториев: узлы – репозитории, спутники – соавторы"
+    ></canvas>
 
     <Transition name="boot">
       <MapBoot v-if="booting" :repos="foundRepos" :pulls="foundPulls" />
@@ -145,13 +159,21 @@ onBeforeUnmount(() => {
 
     <MapLegend :langs="langCounts" :off="langOff" @toggle="toggleLang" />
 
+    <MapNodeList :repos="visibleRepos" @focus="focusRepo" @home="resetHome" />
+
     <div class="ov br">scroll – зум · drag – пан · клик по узлу – фокус · клик по ядру – обзор</div>
 
     <RepoTip v-if="tip" :tip="tip" :stage-w="stageW" :stage-h="stageH" />
 
     <ContributorTip v-if="satTip && !tip" :tip="satTip" :stage-w="stageW" :stage-h="stageH" />
 
-    <CoreTip v-if="coreTip && !tip && !satTip" :tip="coreTip" :stats="stats" />
+    <CoreTip
+      v-if="coreTip && !tip && !satTip"
+      :tip="coreTip"
+      :stats="stats"
+      :stage-w="stageW"
+      :stage-h="stageH"
+    />
   </div>
 </template>
 
@@ -191,7 +213,7 @@ onBeforeUnmount(() => {
   right: var(--spacing-lg);
   font-family: var(--font-family-mono);
   font-size: 11px;
-  color: #6b6b6b;
+  color: var(--color-text-tertiary);
   text-align: right;
   max-width: 46%;
 }
@@ -204,6 +226,13 @@ onBeforeUnmount(() => {
 .boot-enter-from,
 .boot-leave-to {
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-enter-active,
+  .boot-leave-active {
+    transition: none;
+  }
 }
 
 @media (max-width: 720px) {

@@ -16,7 +16,7 @@ defineProps<{
     :y="tip.y"
     :stage-w="stageW"
     :stage-h="stageH"
-    accent="#ffcc00"
+    accent="var(--color-accent)"
     :width="226"
   >
     <div class="head">

@@ -82,5 +82,9 @@ defineProps<{
   .boot-cur {
     animation: none;
   }
+
+  .boot-row {
+    transition: none;
+  }
 }
 </style>

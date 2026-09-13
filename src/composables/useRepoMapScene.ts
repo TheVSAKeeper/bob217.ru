@@ -422,6 +422,11 @@ export function useRepoMapScene(params: SceneParams) {
     showTip(n, true)
   }
 
+  const focusRepo = (name: string): void => {
+    const n = nodes.find((node) => node.repo.name === name)
+    if (n) focusOn(n)
+  }
+
   const resetHome = (): void => {
     dolly = false
     focusNode = null
@@ -719,5 +724,5 @@ export function useRepoMapScene(params: SceneParams) {
     }
   }
 
-  return { tip, satTip, coreTip, counter, mount, pulse, rebuild }
+  return { tip, satTip, coreTip, counter, mount, pulse, rebuild, focusRepo, resetHome }
 }

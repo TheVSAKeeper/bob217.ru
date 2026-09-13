@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import type { CoreTipState } from '@/composables/repoMap/types'
 import { OWNER, type MapStats } from '@/composables/useForkMap'
 import { plural } from '@/utils/format'
@@ -7,12 +7,51 @@ import { plural } from '@/utils/format'
 const props = defineProps<{
   tip: CoreTipState
   stats: MapStats
+  stageW: number
+  stageH: number
 }>()
 
-const style = computed(() => ({
-  left: `${props.tip.x}px`,
-  top: `${props.tip.y - 52}px`,
-}))
+const LIFT = 52
+const EDGE = 8
+
+const tipEl = useTemplateRef<HTMLElement>('tipBox')
+const boxW = ref(0)
+const boxH = ref(0)
+let observer: ResizeObserver | null = null
+
+const measure = (): void => {
+  if (!tipEl.value) return
+  boxW.value = tipEl.value.offsetWidth
+  boxH.value = tipEl.value.offsetHeight
+}
+
+onMounted(() => {
+  measure()
+  if (!tipEl.value) return
+  observer = new ResizeObserver(measure)
+  observer.observe(tipEl.value)
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  observer = null
+})
+
+const fit = (value: number, min: number, max: number): number =>
+  Math.min(Math.max(value, min), Math.max(min, max))
+
+const style = computed(() => {
+  const half = boxW.value / 2
+  const left =
+    props.stageW > 0 && boxW.value > 0
+      ? fit(props.tip.x, EDGE + half, props.stageW - EDGE - half)
+      : props.tip.x
+  const top =
+    props.stageH > 0 && boxH.value > 0
+      ? fit(props.tip.y - LIFT, EDGE + boxH.value, props.stageH - EDGE)
+      : props.tip.y - LIFT
+  return { left: `${left}px`, top: `${top}px` }
+})
 
 const cells = computed<[number, string][]>(() => [
   [props.stats.total, plural(props.stats.total, 'репозиторий', 'репозитория', 'репозиториев')],
@@ -22,7 +61,7 @@ const cells = computed<[number, string][]>(() => [
 </script>
 
 <template>
-  <div class="coretip" :style="style">
+  <div ref="tipBox" class="coretip" :style="style">
     <div class="nm">@{{ OWNER }}</div>
     <div class="rule"></div>
     <div class="grid">

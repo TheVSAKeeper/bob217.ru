@@ -5,6 +5,7 @@ type CmdPhase = 'idle' | 'erasing' | 'typing'
 
 const props = defineProps<{
   text?: string
+  button?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -81,12 +82,18 @@ const onTextAnimationEnd = async (event: AnimationEvent): Promise<void> => {
 </script>
 
 <template>
-  <p class="cmd" :class="[phase, { settling }]" @click="rerun">
+  <component
+    :is="button ? 'button' : 'p'"
+    :type="button ? 'button' : undefined"
+    class="cmd"
+    :class="[phase, { settling }]"
+    @click="rerun"
+  >
     <span class="cmd-prompt">$&nbsp;</span
     ><span ref="textEl" class="cmd-text" @animationend="onTextAnimationEnd"
       ><slot>{{ shown }}</slot></span
     ><span class="cmd-cursor" aria-hidden="true" @animationend="settling = false"></span>
-  </p>
+  </component>
 </template>
 
 <style scoped>
@@ -97,6 +104,18 @@ const onTextAnimationEnd = async (event: AnimationEvent): Promise<void> => {
   letter-spacing: 0.03em;
   margin: 0 0 var(--spacing-sm) 0;
   cursor: pointer;
+}
+
+button.cmd {
+  display: inline-block;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.03em;
 }
 
 .cmd-prompt {

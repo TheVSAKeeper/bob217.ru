@@ -35,22 +35,32 @@ const emit = defineEmits<{
 
 <template>
   <div class="ov tl">
-    <CmdLine @run="emit('rebuild')">build --map --from-scratch</CmdLine>
+    <CmdLine button @run="emit('rebuild')">build --map --from-scratch</CmdLine>
     <h1>Карта репозиториев</h1>
     <div class="chips">
-      <button class="chip" :class="{ on: filt === 'all' }" @click="emit('update:filt', 'all')">
+      <button
+        type="button"
+        class="chip"
+        :class="{ on: filt === 'all' }"
+        :aria-pressed="filt === 'all'"
+        @click="emit('update:filt', 'all')"
+      >
         все {{ total }}
       </button>
       <button
+        type="button"
         class="chip"
         :class="{ on: filt === 'forked' }"
+        :aria-pressed="filt === 'forked'"
         @click="emit('update:filt', 'forked')"
       >
         форкнутые {{ forked }}
       </button>
       <button
+        type="button"
         class="chip"
         :class="{ on: flowLayer }"
+        :aria-pressed="flowLayer"
         title="Жёлтые импульсы: принятые PR соавторов в основной репозиторий"
         @click="emit('toggle-flow')"
       >
@@ -62,8 +72,10 @@ const emit = defineEmits<{
       <button
         v-for="o in SIZE_OPTIONS"
         :key="o.key"
+        type="button"
         class="chip sm"
         :class="{ on: sizeBy === o.key }"
+        :aria-pressed="sizeBy === o.key"
         @click="emit('update:sizeBy', o.key)"
       >
         {{ o.label }}
@@ -121,9 +133,12 @@ h1 {
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
-  padding: 4px 11px;
+  padding: 2px 11px;
   border-radius: var(--radius-full);
   background: rgba(38, 38, 38, 0.7);
   border: 1px solid var(--color-bg-tertiary);
@@ -136,7 +151,7 @@ h1 {
 }
 
 .chip.sm {
-  padding: 3px 9px;
+  padding: 2px 9px;
 }
 
 .chip:hover {
@@ -168,6 +183,12 @@ h1 {
 
 .note.warn {
   color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip {
+    transition: none;
+  }
 }
 
 @media (max-width: 720px) {

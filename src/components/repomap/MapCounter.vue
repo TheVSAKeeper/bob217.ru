@@ -14,11 +14,18 @@ const leading = computed(() => {
   const raw = String(props.counter)
   return 3 - raw.length
 })
+
+const announce = computed(() =>
+  props.counter === props.stats.total
+    ? `${props.stats.total} ${plural(props.stats.total, 'репозиторий', 'репозитория', 'репозиториев')}`
+    : '',
+)
 </script>
 
 <template>
   <div class="ov tr">
-    <div class="cnt" :aria-label="`${counter}`">
+    <span class="sr-only" aria-live="polite" aria-atomic="true">{{ announce }}</span>
+    <div class="cnt">
       <span
         v-for="(d, i) in digits"
         :key="i"

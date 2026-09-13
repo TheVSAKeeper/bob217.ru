@@ -31,8 +31,10 @@ const bodyId = useId()
         <button
           v-for="l in langs"
           :key="l.lang"
+          type="button"
           class="lang"
           :class="{ off: off.has(l.lang) }"
+          :aria-pressed="!off.has(l.lang)"
           @click="emit('toggle', l.lang)"
         >
           <span class="dot" :style="{ background: langColor(l.lang) }"></span>
@@ -89,6 +91,7 @@ const bodyId = useId()
 .lang {
   display: inline-flex;
   align-items: center;
+  min-height: 24px;
   gap: 6px;
   cursor: pointer;
   font-family: var(--font-family-mono);
@@ -140,6 +143,12 @@ const bodyId = useId()
   background: var(--color-accent);
   box-shadow: 0 0 7px var(--color-accent);
   flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lang {
+    transition: none;
+  }
 }
 
 @media (max-width: 720px) {
