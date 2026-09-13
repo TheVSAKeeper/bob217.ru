@@ -752,7 +752,7 @@ export function useRepoMapScene(params: SceneParams) {
     }
     if (!tStart) return
     const [sx, sy] = localXY(touch)
-    if (view.value === 'orbit') orbitBy(sx - tStart[0], sy - tStart[1])
+    if (view.value === 'orbit' && !e.shiftKey) orbitBy(sx - tStart[0], sy - tStart[1])
     else panBy(tStart, sx, sy)
     tStart = [sx, sy]
   }

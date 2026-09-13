@@ -16,7 +16,7 @@ export const paintFlow = (f: Frame): void => {
     const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
     const nr = f.nodeRadius(n) * vp.cam.s * dz
     const [fx, fy] = satScreen(vp, n, p.i, sx, sy, nr, f.now)
-    const fade = p.t < 0.12 ? p.t / 0.12 : 1
+    const fade = (p.t < 0.12 ? p.t / 0.12 : 1) * depthAlpha(dz)
     const ee = easeOut(Math.min(p.t, 1))
     const cx = fx + (sx - fx) * ee
     const cy = fy + (sy - fy) * ee
@@ -40,11 +40,12 @@ export const paintFlow = (f: Frame): void => {
     for (const n of f.activeFlow()) {
       const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
       const nr = f.nodeRadius(n) * vp.cam.s * dz
+      const da = depthAlpha(dz)
       n.repo.contributors.forEach((_, i) => {
         const [fx, fy] = satScreen(vp, n, i, sx, sy, nr, f.now)
         const grad = ctx.createLinearGradient(fx, fy, sx, sy)
-        grad.addColorStop(0, 'rgba(255,204,0,.15)')
-        grad.addColorStop(1, 'rgba(255,204,0,.6)')
+        grad.addColorStop(0, `rgba(255,204,0,${0.15 * da})`)
+        grad.addColorStop(1, `rgba(255,204,0,${0.6 * da})`)
         ctx.strokeStyle = grad
         ctx.lineWidth = 2
         ctx.beginPath()

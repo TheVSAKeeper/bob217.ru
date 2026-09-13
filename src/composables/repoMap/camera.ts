@@ -40,6 +40,7 @@ export const FOCAL_K = 1.2
 
 const TARGET_SNAP = 1e-4
 const HORIZON_FLOOR = 0.02
+const HORIZON_SPAN = 8
 
 export const createViewport = (): Viewport => {
   const cam: Camera = {
@@ -85,7 +86,9 @@ export const createViewport = (): Viewport => {
       const ny = (sy - vp.H / 2) / cam.s
       const sp = Math.sin(cam.pitch)
       const den = vp.foc * Math.cos(cam.pitch) + ny * sp
-      const y1 = (ny * vp.foc) / Math.max(den, vp.foc * HORIZON_FLOOR)
+      const reach = HORIZON_SPAN * vp.R
+      const far = (ny * vp.foc) / Math.max(den, vp.foc * HORIZON_FLOOR)
+      const y1 = Math.max(-reach, Math.min(reach, far))
       const x1 = (nx * Math.max(1, vp.foc - y1 * sp)) / vp.foc
       const cy = Math.cos(cam.yaw)
       const sy2 = Math.sin(cam.yaw)
