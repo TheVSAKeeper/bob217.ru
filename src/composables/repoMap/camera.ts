@@ -49,7 +49,7 @@ export const DRIFT_HOLD_MS = 60000
 const TARGET_SNAP = 1e-4
 const HORIZON_FLOOR = 0.02
 const HORIZON_SPAN = 8
-const DEPTH_MAX = 6
+export const DEPTH_MAX = 6
 
 export const createViewport = (): Viewport => {
   const cam: Camera = {
