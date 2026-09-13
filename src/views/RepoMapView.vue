@@ -22,6 +22,7 @@ const {
   stage: loadStage,
   foundRepos,
   foundPulls,
+  staleAt,
 } = useForkMap()
 
 const filt = ref<'all' | 'forked'>('all')
@@ -85,7 +86,8 @@ const sizeHint = computed(() => {
   if (sizeBy.value !== 'commits') return SIZE_HINT[sizeBy.value]
   if (commitsState.value === 'loading')
     return `считаю коммиты: ${commitsDone.value} / ${repos.value.length}`
-  if (commitsState.value === 'partial') return 'коммиты частично: лимит GitHub, клик повторит'
+  if (commitsState.value === 'partial')
+    return 'коммиты частично: часть запросов не прошла, клик повторит'
   return SIZE_HINT.commits
 })
 
@@ -132,6 +134,7 @@ onBeforeUnmount(() => {
       :forked="forkedCount"
       :size-hint="sizeHint"
       :error="error"
+      :stale-at="staleAt"
       @update:filt="setFilt"
       @update:size-by="setSize"
       @toggle-flow="toggleFlow"

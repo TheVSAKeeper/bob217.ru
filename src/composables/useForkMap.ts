@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { readCache, writeCache } from '@/utils/cache'
+import { readCache, readStale, writeCache } from '@/utils/cache'
 import { fetchGitHub, githubResponse } from '@/utils/github'
 
 export interface Contributor {
@@ -145,6 +145,7 @@ interface SearchItem {
 }
 
 interface SearchResponse {
+  total_count: number
   items: SearchItem[]
 }
 
@@ -160,6 +161,8 @@ const REPOS_KEY = 'repo-map-list'
 const REPOS_TTL = 30 * 60 * 1000
 const MERGED_KEY = 'merged-pulls'
 const MERGED_TTL = 30 * 60 * 1000
+// TODO: потолок – 500 принятых PR (5 страниц по 100), сегодня 222; когда total_count превысит 500,
+// поднять число страниц или перейти на инкрементальную подгрузку
 const MERGED_PAGES = 5
 const COMMITS_LANES = 5
 
@@ -230,6 +233,16 @@ const toRepo = (r: RepoResponse, contributors: Contributor[], commits: number | 
 export const loadRepos = async (): Promise<Repo[]> =>
   (await fetchRepoList()).map((r) => toRepo(r, [], null))
 
+const toPulls = (items: SearchItem[]): MergedPull[] =>
+  items.map((it) => ({
+    login: it.user.login,
+    repo: repoName(it.repository_url),
+    at: it.pull_request?.merged_at ?? it.closed_at ?? '',
+  }))
+
+const pageCount = (total: number): number =>
+  Number.isFinite(total) && total > 100 ? Math.min(Math.ceil(total / 100), MERGED_PAGES) : 1
+
 let mergedPromise: Promise<MergedPull[]> | null = null
 let mergedAt = 0
 
@@ -240,19 +253,21 @@ export const loadMergedPulls = (onPage?: (found: number) => void): Promise<Merge
     mergedPromise = (async () => {
       const cached = readCache<MergedPull[]>(MERGED_KEY, MERGED_TTL)
       if (cached) return cached
-      const all: MergedPull[] = []
-      for (let page = 1; page <= MERGED_PAGES; page++) {
-        const data = await fetchGitHub<SearchResponse>(mergedUrl(page))
-        for (const it of data.items) {
-          all.push({
-            login: it.user.login,
-            repo: repoName(it.repository_url),
-            at: it.pull_request?.merged_at ?? it.closed_at ?? '',
-          })
-        }
-        onPage?.(all.length)
-        if (data.items.length < 100) break
-      }
+      const first = await fetchGitHub<SearchResponse>(mergedUrl(1))
+      const pages: MergedPull[][] = [toPulls(first.items)]
+      let found = pages[0]?.length ?? 0
+      onPage?.(found)
+      const rest = pageCount(first.total_count) - 1
+      await Promise.all(
+        Array.from({ length: rest }, async (_, i) => {
+          const data = await fetchGitHub<SearchResponse>(mergedUrl(i + 2))
+          const items = toPulls(data.items)
+          pages[i + 1] = items
+          found += items.length
+          onPage?.(found)
+        }),
+      )
+      const all = pages.flat()
       writeCache(MERGED_KEY, all)
       return all
     })().catch((e: unknown) => {
@@ -263,12 +278,13 @@ export const loadMergedPulls = (onPage?: (found: number) => void): Promise<Merge
   return mergedPromise
 }
 
-const loadContributors = async (
-  onPage: (found: number) => void,
-): Promise<Map<string, Contributor[]>> => {
+const contributorsOf = (
+  pulls: MergedPull[],
+  onFound?: (found: number) => void,
+): Map<string, Contributor[]> => {
   const byRepo = new Map<string, Map<string, Contributor>>()
   let found = 0
-  for (const { login, repo, at } of await loadMergedPulls(onPage)) {
+  for (const { login, repo, at } of pulls) {
     if (login === OWNER) continue
     const people = byRepo.get(repo) ?? new Map<string, Contributor>()
     const c = people.get(login) ?? { login, merged: 0, last: '' }
@@ -278,7 +294,7 @@ const loadContributors = async (
     byRepo.set(repo, people)
     found++
   }
-  onPage(found)
+  onFound?.(found)
   return new Map(
     [...byRepo].map(([repo, people]) => [
       repo,
@@ -289,6 +305,11 @@ const loadContributors = async (
 
 const readCommitsCache = (): Record<string, number> =>
   readCache<Record<string, number>>(COMMITS_KEY, COMMITS_TTL) ?? {}
+
+const buildRepos = (list: RepoResponse[], contributors: Map<string, Contributor[]>): Repo[] => {
+  const commits = readCommitsCache()
+  return list.map((r) => toRepo(r, contributors.get(r.name) ?? [], commits[r.name] ?? null))
+}
 
 const lastPage = (link: string | null): number | null => {
   const m = link?.match(/[?&]page=(\d+)>;\s*rel="last"/)
@@ -313,24 +334,45 @@ export function useForkMap() {
   const stage = ref<LoadStage>('idle')
   const foundRepos = ref(0)
   const foundPulls = ref(0)
+  const staleAt = ref<number | null>(null)
+
+  const showStale = (): boolean => {
+    const list = readStale<RepoResponse[]>(REPOS_KEY)
+    const pulls = readStale<MergedPull[]>(MERGED_KEY)
+    if (!list || !pulls || !Array.isArray(list.data) || !Array.isArray(pulls.data)) return false
+    try {
+      repos.value = buildRepos(list.data, contributorsOf(pulls.data))
+    } catch {
+      return false
+    }
+    foundRepos.value = list.data.length
+    staleAt.value = Math.min(list.ts, pulls.ts)
+    stage.value = 'ready'
+    return true
+  }
 
   const load = async (): Promise<void> => {
     loading.value = true
     error.value = null
+    staleAt.value = null
     stage.value = 'repos'
     try {
-      const list = await fetchRepoList()
-      foundRepos.value = list.length
-      stage.value = 'pulls'
-      const contributors = await loadContributors((n) => (foundPulls.value = n))
-      const cached = readCommitsCache()
-      repos.value = list.map((r) =>
-        toRepo(r, contributors.get(r.name) ?? [], cached[r.name] ?? null),
+      const [list, pulls] = await Promise.all([
+        fetchRepoList().then((l) => {
+          foundRepos.value = l.length
+          if (stage.value === 'repos') stage.value = 'pulls'
+          return l
+        }),
+        loadMergedPulls((n) => (foundPulls.value = n)),
+      ])
+      repos.value = buildRepos(
+        list,
+        contributorsOf(pulls, (n) => (foundPulls.value = n)),
       )
       stage.value = 'ready'
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Не удалось загрузить карту'
-      stage.value = 'error'
+      if (!showStale()) stage.value = 'error'
     } finally {
       loading.value = false
     }
@@ -401,5 +443,6 @@ export function useForkMap() {
     stage,
     foundRepos,
     foundPulls,
+    staleAt,
   }
 }

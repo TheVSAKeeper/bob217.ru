@@ -1,8 +1,9 @@
 <script lang="ts" setup>
+import { computed } from 'vue'
 import CmdLine from '@/components/CmdLine.vue'
 import { SIZE_OPTIONS, type SizeBy } from '@/composables/useForkMap'
 
-defineProps<{
+const props = defineProps<{
   filt: 'all' | 'forked'
   flowLayer: boolean
   sizeBy: SizeBy
@@ -10,7 +11,19 @@ defineProps<{
   forked: number
   sizeHint: string
   error: string | null
+  staleAt: number | null
 }>()
+
+const DAY = 24 * 60 * 60 * 1000
+
+const staleTime = computed(() => {
+  if (props.staleAt === null) return ''
+  const at = new Date(props.staleAt)
+  const time = { hour: '2-digit', minute: '2-digit' } as const
+  return Date.now() - props.staleAt < DAY
+    ? at.toLocaleTimeString('ru-RU', time)
+    : at.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', ...time })
+})
 
 const emit = defineEmits<{
   (e: 'update:filt', value: 'all' | 'forked'): void
@@ -57,7 +70,10 @@ const emit = defineEmits<{
       </button>
     </div>
     <div class="note">{{ sizeHint }}</div>
-    <div v-if="error" class="note err">{{ error }}</div>
+    <div v-if="staleAt !== null" class="note warn">
+      warning: данные от {{ staleTime }}<template v-if="error">, {{ error }}</template>
+    </div>
+    <div v-else-if="error" class="note err">{{ error }}</div>
     <div v-if="flowLayer" class="note flow">жёлтые импульсы – принятые PR соавторов в оригинал</div>
   </div>
 </template>
@@ -148,6 +164,10 @@ h1 {
 
 .note.err {
   color: var(--color-danger);
+}
+
+.note.warn {
+  color: var(--color-accent);
 }
 
 @media (max-width: 720px) {
