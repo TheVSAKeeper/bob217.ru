@@ -27,7 +27,10 @@ export const paintConstellations = (f: Frame): void => {
     const intro = f.intro(a.introDelay + 320, 700)
     if (intro <= 0) continue
     const g = f.domGlow(a.key)
-    const pts: Point[] = a.hull.map(([x, y]) => vp.w2s(x, y))
+    const pts: Point[] = a.hull.map(([x, y]): Point => {
+      const [px, py] = vp.w2s(x, y)
+      return [px, py]
+    })
     ctx.save()
     ctx.globalAlpha = (0.12 + 0.3 * g) * intro
     ctx.strokeStyle = g > 0.02 ? a.color : 'rgba(255,255,255,.9)'

@@ -1,6 +1,6 @@
 import { DOLLY_MS } from './camera'
 import { FLARE_MS } from './layout'
-import { clamp01, easeOutBack, TAU } from './math'
+import { clamp01, depthAlpha, easeOutBack, TAU } from './math'
 import { blit, glowSprite, spikeSprite } from './sprites'
 import { drawChip, MONO } from './text'
 import type { Frame, Node } from './types'
@@ -19,15 +19,17 @@ export const paintNodes = (f: Frame): void => {
   for (const n of f.nodes) {
     const intro = f.intro(n.introDelay, 420)
     if (intro <= 0) continue
-    const [sx, sy] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
     const hv = f.hover === n
     const g = f.domGlow(n.repo.domain)
     const wave = f.pulseWave(n.dist)
     const tw = f.reduce ? 1 : 1 + 0.07 * Math.sin((f.now / 900) * n.twSpeed + n.twPhase)
     const grow = clamp01(easeOutBack(intro))
     const nr =
-      Math.max(0.4, f.nodeRadius(n) * vp.cam.s) * grow * (hv ? 1.28 : 1 + 0.08 * g + 0.35 * wave)
-    const A = nodeAlpha(f, n)
+      Math.max(0.4, f.nodeRadius(n) * vp.cam.s * dz) *
+      grow *
+      (hv ? 1.28 : 1 + 0.08 * g + 0.35 * wave)
+    const A = nodeAlpha(f, n) * depthAlpha(dz)
 
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
@@ -73,9 +75,9 @@ export const paintNodeLabels = (f: Frame): void => {
   for (const n of f.nodes) {
     const intro = f.intro(n.introDelay, 420)
     if (intro <= 0 || f.hardOut(n)) continue
-    const [sx, sy] = vp.w2s(n.bx + n.ox, n.by + n.oy)
-    const nr = f.nodeRadius(n) * vp.cam.s
-    ctx.globalAlpha = zoomIn * intro * (f.hover && f.hover !== n ? 0.5 : 1)
+    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const nr = f.nodeRadius(n) * vp.cam.s * dz
+    ctx.globalAlpha = zoomIn * intro * depthAlpha(dz) * (f.hover && f.hover !== n ? 0.5 : 1)
     drawChip(ctx, n.repo.name, sx, sy + nr + 7, f.hover === n ? '#fff' : '#c9c9c9')
   }
   ctx.restore()

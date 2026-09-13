@@ -14,6 +14,7 @@ const STAR_COUNT = 320
 const NEB_TEX = 512
 const NEB_SPAN = 3.6
 const DEEP = '#2b3a7a'
+const SKY_YAW = 0.35
 
 export interface Backdrop {
   build: (rnd: () => number, anchors: Anchor[], R: number) => void
@@ -99,21 +100,39 @@ export const createBackdrop = (): Backdrop => {
     if (fade <= 0) return
 
     if (nebula) {
-      const size = span * cam.s
       const [nx, ny] = vp.w2s(-span / 2, -span / 2)
       ctx.save()
       ctx.globalCompositeOperation = 'lighter'
       ctx.globalAlpha = 0.9 * fade
-      ctx.drawImage(nebula, nx, ny, size, size)
+      if (vp.flat()) {
+        const size = span * cam.s
+        ctx.drawImage(nebula, nx, ny, size, size)
+      } else {
+        const [ex, ey] = vp.w2s(span / 2, -span / 2)
+        const [fx, fy] = vp.w2s(-span / 2, span / 2)
+        ctx.transform(
+          (ex - nx) / span,
+          (ey - ny) / span,
+          (fx - nx) / span,
+          (fy - ny) / span,
+          nx,
+          ny,
+        )
+        ctx.drawImage(nebula, 0, 0, span, span)
+      }
       ctx.restore()
     }
 
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
+    const skyCos = Math.cos(cam.yaw * SKY_YAW)
+    const skySin = Math.sin(cam.yaw * SKY_YAW)
     for (const s of stars) {
       const sd = 1 + (cam.s - 1) * s.depth
-      const x = (s.x - cam.x * s.depth) * sd + W / 2
-      const y = (s.y - cam.y * s.depth) * sd + H / 2
+      const px = s.x - cam.x * s.depth
+      const py = s.y - cam.y * s.depth
+      const x = (px * skyCos - py * skySin) * sd + W / 2
+      const y = (px * skySin + py * skyCos) * sd + H / 2
       if (x < -4 || y < -4 || x > W + 4 || y > H + 4) continue
       const tw = f.reduce ? 1 : 0.72 + 0.28 * Math.sin(f.now / 780 + s.tw)
       ctx.globalAlpha = clamp01(s.a * tw * fade)

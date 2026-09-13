@@ -2,11 +2,22 @@ import { OWNER } from '@/composables/useForkMap'
 import { easeOut, TAU } from './math'
 import { blit, glowSprite, spikeSprite } from './sprites'
 import { drawTracked, hairline, MONO } from './text'
+import type { Viewport } from './camera'
 import type { Frame } from './types'
 
 export const CORE_BASE = 26
 export const PULSE_MS = 800
 const ACCENT = '#ffcc00'
+const RING_STEPS = 36
+
+const ringPath = (vp: Viewport, ctx: CanvasRenderingContext2D, rad: number): void => {
+  for (let i = 0; i <= RING_STEPS; i++) {
+    const t = (i / RING_STEPS) * TAU
+    const [x, y] = vp.w2s(Math.cos(t) * rad * vp.kx, Math.sin(t) * rad)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+}
 
 export const paintPulse = (f: Frame): void => {
   if (f.reduce) return
@@ -20,9 +31,11 @@ export const paintPulse = (f: Frame): void => {
     ctx.globalAlpha = (1 - p) * alpha
     ctx.strokeStyle = ACCENT
     ctx.lineWidth = width
-    const front = easeOut(p) * vp.R * 1.15 * vp.cam.s
+    const rad = easeOut(p) * vp.R * 1.15
+    const front = rad * vp.cam.s
     ctx.beginPath()
-    ctx.ellipse(hsx, hsy, front * vp.kx, front, 0, 0, TAU)
+    if (vp.flat()) ctx.ellipse(hsx, hsy, front * vp.kx, front, 0, 0, TAU)
+    else ringPath(vp, ctx, rad)
     ctx.stroke()
     ctx.restore()
   }
@@ -34,8 +47,8 @@ export const paintCore = (f: Frame): void => {
   const { ctx, vp } = f
   const intro = f.intro(0, 620)
   if (intro <= 0) return
-  const [hsx, hsy] = vp.w2s(0, 0)
-  const cr = (CORE_BASE + (f.hoverCore ? 5 : 0)) * vp.cam.s * intro
+  const [hsx, hsy, hdz] = vp.w2s(0, 0)
+  const cr = (CORE_BASE + (f.hoverCore ? 5 : 0)) * vp.cam.s * hdz * intro
   const breathe = f.reduce ? 1 : 1 + 0.035 * Math.sin(f.now / 1400)
 
   ctx.save()

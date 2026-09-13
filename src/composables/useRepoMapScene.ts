@@ -1,13 +1,18 @@
-import { ref, watch, type Ref } from 'vue'
+import { readonly, ref, watch, type Ref } from 'vue'
 import type { Repo, SizeBy } from '@/composables/useForkMap'
 import { createBackdrop } from '@/composables/repoMap/backdrop'
 import {
+  clampPitch,
   createViewport,
   dollyScale,
   DOLLY_MS,
+  FOCAL_K,
   followTargets,
+  ORBIT_PITCH,
+  ORBIT_RAD_PER_PX,
   ZOOM_MAX,
   ZOOM_MIN,
+  type MapView,
 } from '@/composables/repoMap/camera'
 import { buildScene, layoutScene, SAT_INTRO } from '@/composables/repoMap/layout'
 import { clamp01, easeOut, mulberry32 } from '@/composables/repoMap/math'
@@ -33,7 +38,7 @@ import type {
   TipState,
 } from '@/composables/repoMap/types'
 
-export type { CoreTipState, SatTipState, TipState }
+export type { CoreTipState, MapView, SatTipState, TipState }
 
 interface SceneParams {
   repos: Ref<Repo[]>
@@ -47,12 +52,30 @@ const SEED = 20240720
 const WAVE_WIDTH = 76
 const BRIGHT_COUNT = 6
 const BRIGHT_EVERY = 400
+const VIEW_KEY = 'repo-map-view'
+
+const readView = (): MapView => {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'orbit' ? 'orbit' : 'flat'
+  } catch {
+    return 'flat'
+  }
+}
+
+const writeView = (v: MapView): void => {
+  try {
+    localStorage.setItem(VIEW_KEY, v)
+  } catch {
+    return
+  }
+}
 
 export function useRepoMapScene(params: SceneParams) {
   const tip = ref<TipState | null>(null)
   const satTip = ref<SatTipState | null>(null)
   const coreTip = ref<CoreTipState | null>(null)
   const counter = ref(0)
+  const view = ref<MapView>(readView())
 
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
   let rnd = mulberry32(SEED)
@@ -60,6 +83,7 @@ export function useRepoMapScene(params: SceneParams) {
   const vp = createViewport()
   const backdrop = createBackdrop()
   let nodes: Node[] = []
+  let drawNodes: Node[] = []
   let anchors: Anchor[] = []
   const particles: Particle[] = []
   const spawnAcc = new Map<Node, number>()
@@ -145,12 +169,25 @@ export function useRepoMapScene(params: SceneParams) {
     return Math.max(0, 1 - Math.abs(dist - front) / WAVE_WIDTH)
   }
 
+  const nodeDepth = (n: Node): number => vp.w2s(n.bx + n.ox, n.by + n.oy)[2]
+
+  const orderByDepth = (): void => {
+    if (vp.flat()) {
+      drawNodes = nodes
+      return
+    }
+    drawNodes = nodes
+      .map((n): [number, Node] => [nodeDepth(n), n])
+      .sort((a, b) => a[0] - b[0])
+      .map(([, n]) => n)
+  }
+
   const frame = (): Frame => ({
     ctx,
     vp,
     now: nowMs,
     reduce,
-    nodes,
+    nodes: drawNodes,
     anchors,
     particles,
     hover,
@@ -183,6 +220,7 @@ export function useRepoMapScene(params: SceneParams) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     vp.R = Math.min(vp.W, vp.H) / 2 - (vp.W < 560 ? 36 : 64)
     vp.kx = Math.max(1, Math.min(1.4, vp.W / vp.H / 1.5))
+    vp.foc = Math.max(600, FOCAL_K * Math.max(vp.W, vp.H))
     layoutScene(nodes, anchors, vp.R, vp.kx)
     backdrop.build(mulberry32(SEED + 7), anchors, vp.R)
     backdrop.resize(vp.W, vp.H)
@@ -261,7 +299,7 @@ export function useRepoMapScene(params: SceneParams) {
 
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i]!
-      const dist = nodeRadius(p.node) * vp.cam.s + 13
+      const dist = nodeRadius(p.node) * vp.cam.s * nodeDepth(p.node) + 13
       p.t += (p.sp * dt) / dist
       if (p.t >= 1) particles.splice(i, 1)
     }
@@ -278,6 +316,7 @@ export function useRepoMapScene(params: SceneParams) {
   }
 
   const draw = (): void => {
+    orderByDepth()
     const f = frame()
     ctx.clearRect(0, 0, vp.W, vp.H)
     backdrop.draw(f)
@@ -337,6 +376,40 @@ export function useRepoMapScene(params: SceneParams) {
     pulseStart = nowMs
   }
 
+  const viewPitch = (): number => (view.value === 'orbit' ? ORBIT_PITCH : 0)
+
+  const snapView = (): void => {
+    vp.cam.yaw = vp.cam.tyaw = 0
+    vp.cam.pitch = vp.cam.tpitch = viewPitch()
+  }
+
+  const setView = (v: MapView): void => {
+    if (view.value === v) return
+    view.value = v
+    writeView(v)
+    dolly = false
+    vp.cam.tyaw = 0
+    vp.cam.tpitch = viewPitch()
+    if (reduce) snapView()
+  }
+
+  const anchorTo = (wx: number, wy: number, sx: number, sy: number, ns: number): void => {
+    vp.cam.s = ns
+    vp.cam.ts = ns
+    if (vp.flat()) {
+      vp.cam.x = wx - (sx - vp.W / 2) / ns
+      vp.cam.y = wy - (sy - vp.H / 2) / ns
+    } else {
+      for (let i = 0; i < 2; i++) {
+        const [ux, uy] = vp.s2w(sx, sy)
+        vp.cam.x += wx - ux
+        vp.cam.y += wy - uy
+      }
+    }
+    vp.cam.tx = vp.cam.x
+    vp.cam.ty = vp.cam.y
+  }
+
   const rebuild = (): void => {
     introBase = nowMs
     dolly = true
@@ -358,6 +431,7 @@ export function useRepoMapScene(params: SceneParams) {
     vp.cam.x = vp.cam.tx = 0
     vp.cam.y = vp.cam.ty = 0
     vp.cam.s = vp.cam.ts = reduce ? 1 : dollyScale(0)
+    snapView()
     pulseStart = nowMs + 180
   }
 
@@ -434,6 +508,9 @@ export function useRepoMapScene(params: SceneParams) {
     vp.cam.ts = 1
     vp.cam.tx = 0
     vp.cam.ty = 0
+    vp.cam.tyaw = 0
+    vp.cam.tpitch = viewPitch()
+    if (reduce) snapView()
     hideTip()
     coreTip.value = null
     calloutAll()
@@ -444,6 +521,7 @@ export function useRepoMapScene(params: SceneParams) {
   let dragNode: Node | null = null
   let dragW: [number, number] = [0, 0]
   let panning = false
+  let orbiting = false
   let panStart: [number, number] = [0, 0]
   let moved = false
   let satDown: SatHit | null = null
@@ -454,6 +532,20 @@ export function useRepoMapScene(params: SceneParams) {
     return [e.clientX - rect.left, e.clientY - rect.top]
   }
 
+  const orbitBy = (dx: number, dy: number): void => {
+    vp.cam.yaw = vp.cam.tyaw = vp.cam.yaw + dx * ORBIT_RAD_PER_PX
+    vp.cam.pitch = vp.cam.tpitch = clampPitch(vp.cam.pitch - dy * ORBIT_RAD_PER_PX)
+  }
+
+  const panBy = (from: [number, number], sx: number, sy: number): void => {
+    const w1 = vp.s2w(from[0], from[1])
+    const w2 = vp.s2w(sx, sy)
+    vp.cam.x -= w2[0] - w1[0]
+    vp.cam.y -= w2[1] - w1[1]
+    vp.cam.tx = vp.cam.x
+    vp.cam.ty = vp.cam.y
+  }
+
   const onMove = (e: MouseEvent): void => {
     const [sx, sy] = localXY(e)
     const c = pickCtx()
@@ -462,13 +554,14 @@ export function useRepoMapScene(params: SceneParams) {
       moved = true
       return
     }
+    if (orbiting) {
+      orbitBy(sx - panStart[0], sy - panStart[1])
+      panStart = [sx, sy]
+      moved = true
+      return
+    }
     if (panning) {
-      const w1 = vp.s2w(panStart[0], panStart[1])
-      const w2 = vp.s2w(sx, sy)
-      vp.cam.x -= w2[0] - w1[0]
-      vp.cam.y -= w2[1] - w1[1]
-      vp.cam.tx = vp.cam.x
-      vp.cam.ty = vp.cam.y
+      panBy(panStart, sx, sy)
       panStart = [sx, sy]
       moved = true
       return
@@ -544,10 +637,16 @@ export function useRepoMapScene(params: SceneParams) {
       coreDown = true
       return
     }
-    panning = true
+    const orbitDrag = view.value === 'orbit' && !e.shiftKey && e.button !== 2
+    if (orbitDrag) orbiting = true
+    else panning = true
     dolly = false
     panStart = [sx, sy]
     canvas.classList.add('grabbing')
+  }
+
+  const onContextMenu = (e: MouseEvent): void => {
+    if (view.value === 'orbit') e.preventDefault()
   }
 
   const onUp = (): void => {
@@ -556,7 +655,7 @@ export function useRepoMapScene(params: SceneParams) {
     else if (satDown && !moved)
       window.open(`https://github.com/${satDown.login}`, '_blank', 'noopener,noreferrer')
     else if (coreDown && !moved) resetHome()
-    else if (panning && !moved) {
+    else if ((panning || orbiting) && !moved) {
       const wasFocus = focusNode !== null
       focusNode = null
       vp.cam.ts = 1
@@ -570,6 +669,7 @@ export function useRepoMapScene(params: SceneParams) {
     dragging = false
     dragNode = null
     panning = false
+    orbiting = false
     satDown = null
     coreDown = false
   }
@@ -580,12 +680,7 @@ export function useRepoMapScene(params: SceneParams) {
     const [sx, sy] = localXY(e)
     const [wx, wy] = vp.s2w(sx, sy)
     const ns = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, vp.cam.ts * (e.deltaY < 0 ? 1.12 : 0.89)))
-    vp.cam.ts = ns
-    vp.cam.s = ns
-    vp.cam.x = wx - (sx - vp.W / 2) / ns
-    vp.cam.y = wy - (sy - vp.H / 2) / ns
-    vp.cam.tx = vp.cam.x
-    vp.cam.ty = vp.cam.y
+    anchorTo(wx, wy, sx, sy, ns)
   }
 
   let tStart: [number, number] | null = null
@@ -645,12 +740,7 @@ export function useRepoMapScene(params: SceneParams) {
       const p = touchPair(e)
       if (!pinch || !p) return
       const ns = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, (pinch.s0 * p.d) / pinch.d0))
-      vp.cam.s = ns
-      vp.cam.ts = ns
-      vp.cam.x = pinch.wx - (p.mx - vp.W / 2) / ns
-      vp.cam.y = pinch.wy - (p.my - vp.H / 2) / ns
-      vp.cam.tx = vp.cam.x
-      vp.cam.ty = vp.cam.y
+      anchorTo(pinch.wx, pinch.wy, p.mx, p.my, ns)
       return
     }
     const touch = e.targetTouches[0]
@@ -662,12 +752,8 @@ export function useRepoMapScene(params: SceneParams) {
     }
     if (!tStart) return
     const [sx, sy] = localXY(touch)
-    const w1 = vp.s2w(tStart[0], tStart[1])
-    const w2 = vp.s2w(sx, sy)
-    vp.cam.x -= w2[0] - w1[0]
-    vp.cam.y -= w2[1] - w1[1]
-    vp.cam.tx = vp.cam.x
-    vp.cam.ty = vp.cam.y
+    if (view.value === 'orbit') orbitBy(sx - tStart[0], sy - tStart[1])
+    else panBy(tStart, sx, sy)
     tStart = [sx, sy]
   }
 
@@ -698,9 +784,11 @@ export function useRepoMapScene(params: SceneParams) {
     last = T0
     introBase = 0
     vp.cam.s = vp.cam.ts = reduce ? 1 : dollyScale(0)
+    snapView()
     window.addEventListener('resize', layout)
     canvas.addEventListener('mousemove', onMove)
     canvas.addEventListener('mousedown', onDown)
+    canvas.addEventListener('contextmenu', onContextMenu)
     window.addEventListener('mouseup', onUp)
     canvas.addEventListener('wheel', onWheel, { passive: false })
     canvas.addEventListener('touchstart', onTouchStart, { passive: true })
@@ -715,6 +803,7 @@ export function useRepoMapScene(params: SceneParams) {
       window.removeEventListener('resize', layout)
       canvas.removeEventListener('mousemove', onMove)
       canvas.removeEventListener('mousedown', onDown)
+      canvas.removeEventListener('contextmenu', onContextMenu)
       window.removeEventListener('mouseup', onUp)
       canvas.removeEventListener('wheel', onWheel)
       canvas.removeEventListener('touchstart', onTouchStart)
@@ -724,5 +813,17 @@ export function useRepoMapScene(params: SceneParams) {
     }
   }
 
-  return { tip, satTip, coreTip, counter, mount, pulse, rebuild, focusRepo, resetHome }
+  return {
+    tip,
+    satTip,
+    coreTip,
+    counter,
+    view: readonly(view),
+    setView,
+    mount,
+    pulse,
+    rebuild,
+    focusRepo,
+    resetHome,
+  }
 }

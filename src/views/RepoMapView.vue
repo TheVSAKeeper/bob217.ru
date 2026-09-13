@@ -31,14 +31,25 @@ const flowLayer = ref(false)
 const langOff = ref<Set<string>>(new Set())
 const sizeBy = ref<SizeBy>('stars')
 
-const { tip, satTip, coreTip, counter, mount, pulse, rebuild, focusRepo, resetHome } =
-  useRepoMapScene({
-    repos,
-    filt,
-    flowLayer,
-    langOff,
-    sizeBy,
-  })
+const {
+  tip,
+  satTip,
+  coreTip,
+  counter,
+  view,
+  setView,
+  mount,
+  pulse,
+  rebuild,
+  focusRepo,
+  resetHome,
+} = useRepoMapScene({
+  repos,
+  filt,
+  flowLayer,
+  langOff,
+  sizeBy,
+})
 
 const canvas = ref<HTMLCanvasElement | null>(null)
 const stage = ref<HTMLElement | null>(null)
@@ -93,6 +104,12 @@ const sizeHint = computed(() => {
   return SIZE_HINT.commits
 })
 
+const hintLine = computed(() =>
+  view.value === 'orbit'
+    ? 'scroll – зум · drag – орбита · Shift+drag – пан · клик по узлу – фокус · клик по ядру – обзор'
+    : 'scroll – зум · drag – пан · клик по узлу – фокус · клик по ядру – обзор',
+)
+
 const forkedCount = computed(() => repos.value.filter((r) => r.forks > 0).length)
 
 const visibleRepos = computed(() =>
@@ -144,6 +161,7 @@ onBeforeUnmount(() => {
       :filt="filt"
       :flow-layer="flowLayer"
       :size-by="sizeBy"
+      :view="view"
       :total="stats.total"
       :forked="forkedCount"
       :size-hint="sizeHint"
@@ -151,6 +169,7 @@ onBeforeUnmount(() => {
       :stale-at="staleAt"
       @update:filt="setFilt"
       @update:size-by="setSize"
+      @update:view="setView"
       @toggle-flow="toggleFlow"
       @rebuild="rebuild"
     />
@@ -161,7 +180,7 @@ onBeforeUnmount(() => {
 
     <MapNodeList :repos="visibleRepos" @focus="focusRepo" @home="resetHome" />
 
-    <div class="ov br">scroll – зум · drag – пан · клик по узлу – фокус · клик по ядру – обзор</div>
+    <div class="ov br">{{ hintLine }}</div>
 
     <RepoTip v-if="tip" :tip="tip" :stage-w="stageW" :stage-h="stageH" />
 

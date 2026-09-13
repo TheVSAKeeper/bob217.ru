@@ -12,16 +12,23 @@ export interface PickCtx {
   nodeRadius: (n: Node) => number
 }
 
+const DEPTH_EPS = 1e-6
+
 export const pickNode = (c: PickCtx, sx: number, sy: number): Node | null => {
   let best: Node | null = null
   let bd = 1e9
+  let bz = -1
   for (const n of c.nodes) {
     if (c.hardOut(n)) continue
-    const [nx, ny] = c.vp.w2s(n.bx + n.ox, n.by + n.oy)
-    const rr = Math.max(6, c.nodeRadius(n) * c.vp.cam.s) + 4
+    const [nx, ny, dz] = c.vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const rr = Math.max(6, c.nodeRadius(n) * c.vp.cam.s * dz) + 4
     const d = Math.hypot(sx - nx, sy - ny)
-    if (d < rr && d < bd) {
+    if (d >= rr) continue
+    const nearer = dz > bz + DEPTH_EPS
+    const closer = Math.abs(dz - bz) <= DEPTH_EPS && d < bd
+    if (!best || nearer || closer) {
       bd = d
+      bz = dz
       best = n
     }
   }
@@ -33,10 +40,10 @@ export const pickSat = (c: PickCtx, sx: number, sy: number): SatHit | null => {
   let bd = 1e9
   for (const n of c.nodes) {
     if (!n.repo.contributors.length || c.hardOut(n)) continue
-    const [nx, ny] = c.vp.w2s(n.bx + n.ox, n.by + n.oy)
-    const nr = c.nodeRadius(n) * c.vp.cam.s
+    const [nx, ny, dz] = c.vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const nr = c.nodeRadius(n) * c.vp.cam.s * dz
     n.repo.contributors.forEach((p, i) => {
-      const [fx, fy] = satScreen(n, i, nx, ny, nr, c.now)
+      const [fx, fy] = satScreen(c.vp, n, i, nx, ny, nr, c.now)
       const d = Math.hypot(sx - fx, sy - fy)
       if (d < 9 && d < bd) {
         bd = d
@@ -48,8 +55,8 @@ export const pickSat = (c: PickCtx, sx: number, sy: number): SatHit | null => {
 }
 
 export const pickCore = (c: PickCtx, sx: number, sy: number): boolean => {
-  const [hx, hy] = c.vp.w2s(0, 0)
-  return Math.hypot(sx - hx, sy - hy) < CORE_BASE * c.vp.cam.s + 10
+  const [hx, hy, hdz] = c.vp.w2s(0, 0)
+  return Math.hypot(sx - hx, sy - hy) < CORE_BASE * c.vp.cam.s * hdz + 10
 }
 
 export const pickDomain = (c: PickCtx, sx: number, sy: number): string | null => {

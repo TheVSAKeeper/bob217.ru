@@ -1,5 +1,5 @@
 import { SAT_INTRO } from './layout'
-import { easeOut, TAU } from './math'
+import { depthAlpha, easeOut, TAU } from './math'
 import { satScreen } from './satellites'
 import { blit, glowSprite } from './sprites'
 import type { Frame } from './types'
@@ -13,9 +13,9 @@ export const paintFlow = (f: Frame): void => {
   ctx.globalCompositeOperation = 'lighter'
   for (const p of f.particles) {
     const n = p.node
-    const [sx, sy] = vp.w2s(n.bx + n.ox, n.by + n.oy)
-    const nr = f.nodeRadius(n) * vp.cam.s
-    const [fx, fy] = satScreen(n, p.i, sx, sy, nr, f.now)
+    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const nr = f.nodeRadius(n) * vp.cam.s * dz
+    const [fx, fy] = satScreen(vp, n, p.i, sx, sy, nr, f.now)
     const fade = p.t < 0.12 ? p.t / 0.12 : 1
     const ee = easeOut(Math.min(p.t, 1))
     const cx = fx + (sx - fx) * ee
@@ -38,10 +38,10 @@ export const paintFlow = (f: Frame): void => {
 
   if (f.reduce) {
     for (const n of f.activeFlow()) {
-      const [sx, sy] = vp.w2s(n.bx + n.ox, n.by + n.oy)
-      const nr = f.nodeRadius(n) * vp.cam.s
+      const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+      const nr = f.nodeRadius(n) * vp.cam.s * dz
       n.repo.contributors.forEach((_, i) => {
-        const [fx, fy] = satScreen(n, i, sx, sy, nr, f.now)
+        const [fx, fy] = satScreen(vp, n, i, sx, sy, nr, f.now)
         const grad = ctx.createLinearGradient(fx, fy, sx, sy)
         grad.addColorStop(0, 'rgba(255,204,0,.15)')
         grad.addColorStop(1, 'rgba(255,204,0,.6)')
@@ -64,15 +64,15 @@ export const paintSatellites = (f: Frame): void => {
 
   for (const n of f.nodes) {
     if (!n.repo.contributors.length || f.hardOut(n)) continue
-    const [sx, sy] = vp.w2s(n.bx + n.ox, n.by + n.oy)
-    const nr = f.nodeRadius(n) * vp.cam.s
+    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const nr = f.nodeRadius(n) * vp.cam.s * dz
     const dim = f.hover && f.hover !== n ? 0.4 : 1
     const top = n.repo.contributors[0]?.merged ?? 1
     n.repo.contributors.forEach((c, i) => {
-      const [fx, fy] = satScreen(n, i, sx, sy, nr, f.now)
+      const [fx, fy] = satScreen(vp, n, i, sx, sy, nr, f.now)
       const on = f.satHover?.node === n && f.satHover.i === i
       const rad = 2.6 + 1.7 * Math.sqrt(c.merged / top) + (on ? 2 : 0)
-      const a = (on ? 1 : 0.8) * intro * dim
+      const a = (on ? 1 : 0.8) * intro * dim * depthAlpha(dz)
       ctx.save()
       ctx.globalCompositeOperation = 'lighter'
       blit(ctx, glowSprite(FLOW), fx, fy, rad * (on ? 6 : 4), a * 0.55)

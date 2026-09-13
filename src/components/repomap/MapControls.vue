@@ -1,12 +1,14 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
 import CmdLine from '@/components/CmdLine.vue'
+import type { MapView } from '@/composables/repoMap/camera'
 import { SIZE_OPTIONS, type SizeBy } from '@/composables/useForkMap'
 
 const props = defineProps<{
   filt: 'all' | 'forked'
   flowLayer: boolean
   sizeBy: SizeBy
+  view: MapView
   total: number
   forked: number
   sizeHint: string
@@ -25,9 +27,15 @@ const staleTime = computed(() => {
     : at.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', ...time })
 })
 
+const VIEW_OPTIONS: { key: MapView; label: string; hint: string }[] = [
+  { key: 'flat', label: 'плоско', hint: 'вид сверху: drag – пан, scroll – зум' },
+  { key: 'orbit', label: 'орбита', hint: 'наклон диска: drag – орбита, Shift+drag – пан' },
+]
+
 const emit = defineEmits<{
   (e: 'update:filt', value: 'all' | 'forked'): void
   (e: 'update:sizeBy', value: SizeBy): void
+  (e: 'update:view', value: MapView): void
   (e: 'toggle-flow'): void
   (e: 'rebuild'): void
 }>()
@@ -77,6 +85,21 @@ const emit = defineEmits<{
         :class="{ on: sizeBy === o.key }"
         :aria-pressed="sizeBy === o.key"
         @click="emit('update:sizeBy', o.key)"
+      >
+        {{ o.label }}
+      </button>
+    </div>
+    <div class="chips size">
+      <span class="chips-lbl">вид:</span>
+      <button
+        v-for="o in VIEW_OPTIONS"
+        :key="o.key"
+        type="button"
+        class="chip sm"
+        :class="{ on: view === o.key }"
+        :aria-pressed="view === o.key"
+        :title="o.hint"
+        @click="emit('update:view', o.key)"
       >
         {{ o.label }}
       </button>
