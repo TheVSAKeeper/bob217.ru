@@ -15,7 +15,7 @@ import {
   type MapView,
 } from '@/composables/repoMap/camera'
 import { buildScene, layoutScene, SAT_INTRO } from '@/composables/repoMap/layout'
-import { clamp01, easeOut, mulberry32 } from '@/composables/repoMap/math'
+import { clamp01, D2R, easeOut, mulberry32 } from '@/composables/repoMap/math'
 import { paintConstellations, paintDomainLabels } from '@/composables/repoMap/paintConstellations'
 import { paintCore, paintPulse, PULSE_MS } from '@/composables/repoMap/paintCore'
 import { paintFlow, paintSatellites } from '@/composables/repoMap/paintFlow'
@@ -53,6 +53,8 @@ const WAVE_WIDTH = 76
 const BRIGHT_COUNT = 6
 const BRIGHT_EVERY = 400
 const VIEW_KEY = 'repo-map-view'
+const KEY_PAN_PX = 40
+const KEY_ORBIT_STEP = 6 * D2R
 
 const readView = (): MapView => {
   try {
@@ -546,6 +548,26 @@ export function useRepoMapScene(params: SceneParams) {
     vp.cam.ty = vp.cam.y
   }
 
+  const orbitStep = (dyaw: number, dpitch: number): void => {
+    vp.cam.tyaw += dyaw
+    vp.cam.tpitch = clampPitch(vp.cam.tpitch + dpitch)
+    if (reduce) {
+      vp.cam.yaw = vp.cam.tyaw
+      vp.cam.pitch = vp.cam.tpitch
+    }
+  }
+
+  const panStep = (dx: number, dy: number): void => {
+    const w1 = vp.s2w(vp.W / 2, vp.H / 2)
+    const w2 = vp.s2w(vp.W / 2 + dx, vp.H / 2 + dy)
+    vp.cam.tx += w2[0] - w1[0]
+    vp.cam.ty += w2[1] - w1[1]
+    if (reduce) {
+      vp.cam.x = vp.cam.tx
+      vp.cam.y = vp.cam.ty
+    }
+  }
+
   const onMove = (e: MouseEvent): void => {
     const [sx, sy] = localXY(e)
     const c = pickCtx()
@@ -772,6 +794,38 @@ export function useRepoMapScene(params: SceneParams) {
     tStart = null
   }
 
+  const onKeyDown = (e: KeyboardEvent): void => {
+    if (e.ctrlKey || e.altKey || e.metaKey) return
+    if (e.key === 'Home') {
+      resetHome()
+      e.preventDefault()
+      return
+    }
+    const turn = view.value === 'orbit' && !e.shiftKey
+    switch (e.key) {
+      case 'ArrowLeft':
+        if (turn) orbitStep(-KEY_ORBIT_STEP, 0)
+        else panStep(-KEY_PAN_PX, 0)
+        break
+      case 'ArrowRight':
+        if (turn) orbitStep(KEY_ORBIT_STEP, 0)
+        else panStep(KEY_PAN_PX, 0)
+        break
+      case 'ArrowUp':
+        if (turn) orbitStep(0, KEY_ORBIT_STEP)
+        else panStep(0, -KEY_PAN_PX)
+        break
+      case 'ArrowDown':
+        if (turn) orbitStep(0, -KEY_ORBIT_STEP)
+        else panStep(0, KEY_PAN_PX)
+        break
+      default:
+        return
+    }
+    dolly = false
+    e.preventDefault()
+  }
+
   const mount = (el: HTMLCanvasElement): (() => void) => {
     canvas = el
     ctx = canvas.getContext('2d') as CanvasRenderingContext2D
@@ -795,6 +849,7 @@ export function useRepoMapScene(params: SceneParams) {
     canvas.addEventListener('touchmove', onTouchMove, { passive: true })
     canvas.addEventListener('touchend', onTouchEnd)
     canvas.addEventListener('touchcancel', onTouchEnd)
+    canvas.addEventListener('keydown', onKeyDown)
     raf = requestAnimationFrame(tick)
 
     return () => {
@@ -810,6 +865,7 @@ export function useRepoMapScene(params: SceneParams) {
       canvas.removeEventListener('touchmove', onTouchMove)
       canvas.removeEventListener('touchend', onTouchEnd)
       canvas.removeEventListener('touchcancel', onTouchEnd)
+      canvas.removeEventListener('keydown', onKeyDown)
     }
   }
 

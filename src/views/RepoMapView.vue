@@ -106,8 +106,14 @@ const sizeHint = computed(() => {
 
 const hintLine = computed(() =>
   view.value === 'orbit'
-    ? 'scroll – зум · drag – орбита · Shift+drag – пан · клик по узлу – фокус · клик по ядру – обзор'
-    : 'scroll – зум · drag – пан · клик по узлу – фокус · клик по ядру – обзор',
+    ? 'scroll – зум · drag – орбита · Shift+drag – пан · клик по узлу – фокус · клик по ядру – обзор · с клавиатуры: стрелки – орбита, Shift+стрелки – пан, Home – обзор'
+    : 'scroll – зум · drag – пан · клик по узлу – фокус · клик по ядру – обзор · с клавиатуры: стрелки – пан, Home – обзор',
+)
+
+const canvasLabel = computed(() =>
+  view.value === 'orbit'
+    ? 'карта репозиториев, вид: орбита, наклон диска: узлы – репозитории, спутники – соавторы; стрелки – орбита, Shift+стрелки – пан, Home – обзор'
+    : 'карта репозиториев, вид: плоско, вид сверху: узлы – репозитории, спутники – соавторы; стрелки – пан, Home – обзор',
 )
 
 const forkedCount = computed(() => repos.value.filter((r) => r.forks > 0).length)
@@ -150,7 +156,8 @@ onBeforeUnmount(() => {
       ref="canvas"
       class="map-canvas"
       role="img"
-      aria-label="карта репозиториев: узлы – репозитории, спутники – соавторы"
+      tabindex="0"
+      :aria-label="canvasLabel"
     ></canvas>
 
     <Transition name="boot">
@@ -211,6 +218,11 @@ onBeforeUnmount(() => {
   display: block;
   cursor: grab;
   touch-action: none;
+}
+
+.map-canvas:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
 }
 
 .map-canvas.grabbing {

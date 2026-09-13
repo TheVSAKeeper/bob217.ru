@@ -27,10 +27,20 @@ const staleTime = computed(() => {
     : at.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', ...time })
 })
 
-const VIEW_OPTIONS: { key: MapView; label: string; hint: string }[] = [
-  { key: 'flat', label: 'плоско', hint: 'вид сверху: drag – пан, scroll – зум' },
-  { key: 'orbit', label: 'орбита', hint: 'наклон диска: drag – орбита, Shift+drag – пан' },
+const VIEW_OPTIONS: { key: MapView; label: string; mode: string; keys: string }[] = [
+  { key: 'flat', label: 'плоско', mode: 'вид сверху', keys: 'drag – пан, scroll – зум' },
+  {
+    key: 'orbit',
+    label: 'орбита',
+    mode: 'наклон диска',
+    keys: 'drag – орбита, Shift+drag – пан',
+  },
 ]
+
+const viewAnnounce = computed(() => {
+  const active = VIEW_OPTIONS.find((o) => o.key === props.view)
+  return active ? `вид: ${active.label}, ${active.mode}` : ''
+})
 
 const emit = defineEmits<{
   (e: 'update:filt', value: 'all' | 'forked'): void
@@ -98,11 +108,12 @@ const emit = defineEmits<{
         class="chip sm"
         :class="{ on: view === o.key }"
         :aria-pressed="view === o.key"
-        :title="o.hint"
+        :title="`${o.mode}: ${o.keys}`"
         @click="emit('update:view', o.key)"
       >
         {{ o.label }}
       </button>
+      <span class="sr-only" aria-live="polite" aria-atomic="true">{{ viewAnnounce }}</span>
     </div>
     <div class="note">{{ sizeHint }}</div>
     <div v-if="staleAt !== null" class="note warn">
