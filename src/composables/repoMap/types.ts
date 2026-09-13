@@ -9,6 +9,7 @@ export interface Anchor {
   radFrac: number
   bx: number
   by: number
+  bz: number
   sx: number
   sy: number
   dist: number
@@ -27,6 +28,7 @@ export interface Node {
   radFrac: number
   bx: number
   by: number
+  bz: number
   ox: number
   oy: number
   ovx: number

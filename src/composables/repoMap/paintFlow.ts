@@ -13,7 +13,7 @@ export const paintFlow = (f: Frame): void => {
   ctx.globalCompositeOperation = 'lighter'
   for (const p of f.particles) {
     const n = p.node
-    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy, n.bz)
     const nr = f.nodeRadius(n) * vp.cam.s * dz
     const [fx, fy] = satScreen(vp, n, p.i, sx, sy, nr, f.now)
     const fade = (p.t < 0.12 ? p.t / 0.12 : 1) * depthAlpha(dz)
@@ -38,7 +38,7 @@ export const paintFlow = (f: Frame): void => {
 
   if (f.reduce) {
     for (const n of f.activeFlow()) {
-      const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+      const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy, n.bz)
       const nr = f.nodeRadius(n) * vp.cam.s * dz
       const da = depthAlpha(dz)
       n.repo.contributors.forEach((_, i) => {
@@ -65,7 +65,7 @@ export const paintSatellites = (f: Frame): void => {
 
   for (const n of f.nodes) {
     if (!n.repo.contributors.length || f.hardOut(n)) continue
-    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy, n.bz)
     const nr = f.nodeRadius(n) * vp.cam.s * dz
     const dim = f.hover && f.hover !== n ? 0.4 : 1
     const top = n.repo.contributors[0]?.merged ?? 1

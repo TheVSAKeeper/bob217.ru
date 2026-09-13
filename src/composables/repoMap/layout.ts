@@ -1,14 +1,26 @@
 import { DOMAINS, type Domain, type Repo } from '@/composables/useForkMap'
+import { monthIndex, nowMonthIndex } from '@/utils/format'
 import { langColor } from '@/utils/lang'
-import { convexHull, D2R, expandHull, type Point } from './math'
+import { clamp01, convexHull, D2R, expandHull, type Point } from './math'
 import type { Anchor, Node } from './types'
 
 export const INTRO_CORE = 240
 export const INTRO_SPAN = 1450
 export const SAT_INTRO = 2150
 export const FLARE_MS = 420
+export const Z_MAX = 0.55
+export const MONTHS_FAR = 84
 
 const HULL_PAD = 30
+const FAR_LOG = Math.log(1 + MONTHS_FAR)
+
+const staleMonths = (pushed: string, nowM: number): number => {
+  const m = nowM - monthIndex(pushed)
+  return Number.isFinite(m) ? Math.max(0, m) : MONTHS_FAR
+}
+
+const freshHeight = (pushed: string, R: number, nowM: number): number =>
+  Z_MAX * R * clamp01(1 - Math.log(1 + staleMonths(pushed, nowM)) / FAR_LOG)
 
 const frontDelay = (dist: number, R: number): number =>
   INTRO_CORE + INTRO_SPAN * (1 - Math.cbrt(1 - Math.min(0.99, dist / (R * 1.15))))
@@ -51,6 +63,7 @@ const placeRow = (
       radFrac,
       bx: 0,
       by: 0,
+      bz: 0,
       ox: 0,
       oy: 0,
       ovx: 0,
@@ -88,6 +101,7 @@ export const buildScene = (
       radFrac: 0.4,
       bx: 0,
       by: 0,
+      bz: 0,
       sx: 0,
       sy: 0,
       dist: 0,
@@ -108,10 +122,12 @@ export const buildScene = (
 }
 
 export const layoutScene = (nodes: Node[], anchors: Anchor[], R: number, kx = 1): void => {
+  const nowM = nowMonthIndex()
   for (const a of anchors) {
     const rad = a.radFrac * R
     a.bx = Math.cos(a.ang) * rad * kx
     a.by = Math.sin(a.ang) * rad
+    a.bz = 0
     a.dist = rad
     a.introDelay = frontDelay(rad, R)
     a.chain = []
@@ -122,6 +138,7 @@ export const layoutScene = (nodes: Node[], anchors: Anchor[], R: number, kx = 1)
     const rad = n.radFrac * R
     n.bx = Math.cos(n.ang) * rad * kx
     n.by = Math.sin(n.ang) * rad
+    n.bz = freshHeight(n.repo.pushed, R, nowM)
     n.dist = rad
     n.introDelay = frontDelay(rad, R) + (i % 5) * 14
     n.anchor.chain.push(n)

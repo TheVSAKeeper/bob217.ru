@@ -7,12 +7,14 @@ export type Projected = [number, number, number]
 export interface Camera {
   x: number
   y: number
+  z: number
   s: number
   yaw: number
   spin: number
   pitch: number
   tx: number
   ty: number
+  tz: number
   ts: number
   tyaw: number
   tpitch: number
@@ -53,12 +55,14 @@ export const createViewport = (): Viewport => {
   const cam: Camera = {
     x: 0,
     y: 0,
+    z: 0,
     s: 1,
     yaw: 0,
     spin: 0,
     pitch: 0,
     tx: 0,
     ty: 0,
+    tz: 0,
     ts: 1,
     tyaw: 0,
     tpitch: 0,
@@ -76,35 +80,36 @@ export const createViewport = (): Viewport => {
     flat,
     w2s: (wx, wy, wz = 0) => {
       if (flat()) return [(wx - cam.x) * cam.s + vp.W / 2, (wy - cam.y) * cam.s + vp.H / 2, 1]
-      const px = wx - cam.x
+      const px = (wx - cam.x) / vp.kx
       const py = wy - cam.y
       const a = eyaw()
       const cy = Math.cos(a)
       const sy = Math.sin(a)
+      const cp = Math.cos(cam.pitch)
+      const sp = Math.sin(cam.pitch)
       const x1 = px * cy - py * sy
       const y1 = px * sy + py * cy
-      const zc = y1 * Math.sin(cam.pitch) + wz * Math.cos(cam.pitch)
+      const pz = wz - cam.z
+      const zc = y1 * sp + pz * cp
       const depth = vp.foc / Math.max(vp.foc / DEPTH_MAX, vp.foc - zc)
-      return [
-        vp.W / 2 + x1 * cam.s * depth,
-        vp.H / 2 + y1 * Math.cos(cam.pitch) * cam.s * depth,
-        depth,
-      ]
+      return [vp.W / 2 + x1 * cam.s * depth, vp.H / 2 + (y1 * cp - pz * sp) * cam.s * depth, depth]
     },
     s2w: (sx, sy) => {
       if (flat()) return [(sx - vp.W / 2) / cam.s + cam.x, (sy - vp.H / 2) / cam.s + cam.y]
       const nx = (sx - vp.W / 2) / cam.s
       const ny = (sy - vp.H / 2) / cam.s
       const sp = Math.sin(cam.pitch)
-      const den = vp.foc * Math.cos(cam.pitch) + ny * sp
+      const cp = Math.cos(cam.pitch)
+      const h = -cam.z
+      const den = vp.foc * cp + ny * sp
       const reach = HORIZON_SPAN * vp.R
-      const far = (ny * vp.foc) / Math.max(den, vp.foc * HORIZON_FLOOR)
+      const far = (ny * (vp.foc - h * cp) + h * sp * vp.foc) / Math.max(den, vp.foc * HORIZON_FLOOR)
       const y1 = Math.max(-reach, Math.min(reach, far))
-      const x1 = (nx * Math.max(vp.foc / DEPTH_MAX, vp.foc - y1 * sp)) / vp.foc
+      const x1 = (nx * Math.max(vp.foc / DEPTH_MAX, vp.foc - y1 * sp - h * cp)) / vp.foc
       const a = eyaw()
       const cy = Math.cos(a)
       const sy2 = Math.sin(a)
-      return [x1 * cy + y1 * sy2 + cam.x, y1 * cy - x1 * sy2 + cam.y]
+      return [(x1 * cy + y1 * sy2) * vp.kx + cam.x, y1 * cy - x1 * sy2 + cam.y]
     },
   }
   return vp
@@ -119,6 +124,7 @@ export const followTargets = (cam: Camera, dt: number): void => {
   const k = Math.min(1, dt * 6)
   cam.x += (cam.tx - cam.x) * k
   cam.y += (cam.ty - cam.y) * k
+  cam.z = follow(cam.z, cam.tz, k)
   cam.s += (cam.ts - cam.s) * k
   cam.yaw = follow(cam.yaw, cam.tyaw, k)
   cam.pitch = follow(cam.pitch, cam.tpitch, k)

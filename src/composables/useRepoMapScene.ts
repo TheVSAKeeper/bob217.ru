@@ -25,6 +25,7 @@ import { paintCore, paintPulse, PULSE_MS } from '@/composables/repoMap/paintCore
 import { paintFlow, paintSatellites } from '@/composables/repoMap/paintFlow'
 import { paintNodeLabels, paintNodes } from '@/composables/repoMap/paintNodes'
 import { paintPlane } from '@/composables/repoMap/paintPlane'
+import { paintStems } from '@/composables/repoMap/paintStems'
 import {
   pickCore,
   pickDomain,
@@ -192,7 +193,7 @@ export function useRepoMapScene(params: SceneParams) {
     driftHold = nowMs + DRIFT_HOLD_MS
   }
 
-  const nodeDepth = (n: Node): number => vp.w2s(n.bx + n.ox, n.by + n.oy)[2]
+  const nodeDepth = (n: Node): number => vp.w2s(n.bx + n.ox, n.by + n.oy, n.bz)[2]
 
   const orderByDepth = (): void => {
     if (vp.flat()) {
@@ -352,6 +353,7 @@ export function useRepoMapScene(params: SceneParams) {
     backdrop.draw(f)
     paintPlane(f)
     paintConstellations(f)
+    paintStems(f)
     paintFlow(f)
     paintSatellites(f)
     paintNodes(f)
@@ -374,7 +376,7 @@ export function useRepoMapScene(params: SceneParams) {
   }
 
   const tipAt = (n: Node): [number, number] => {
-    const [x, y] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const [x, y] = vp.w2s(n.bx + n.ox, n.by + n.oy, n.bz)
     return [Math.round(x), Math.round(y)]
   }
 
@@ -466,6 +468,7 @@ export function useRepoMapScene(params: SceneParams) {
     for (const a of anchors) a.calloutStart = -1e9
     vp.cam.x = vp.cam.tx = 0
     vp.cam.y = vp.cam.ty = 0
+    vp.cam.z = vp.cam.tz = 0
     vp.cam.s = vp.cam.ts = reduce ? 1 : dollyScale(0)
     snapView()
     pulseStart = nowMs + 180
@@ -528,6 +531,7 @@ export function useRepoMapScene(params: SceneParams) {
     satTip.value = null
     vp.cam.tx = n.bx + n.ox
     vp.cam.ty = n.by + n.oy
+    vp.cam.tz = n.bz
     vp.cam.ts = 1.6
     showTip(n, true)
   }
@@ -544,6 +548,7 @@ export function useRepoMapScene(params: SceneParams) {
     vp.cam.ts = 1
     vp.cam.tx = 0
     vp.cam.ty = 0
+    vp.cam.tz = 0
     vp.cam.tyaw = 0
     vp.cam.tpitch = viewPitch()
     if (reduce) snapView()
@@ -729,6 +734,7 @@ export function useRepoMapScene(params: SceneParams) {
       if (wasFocus) {
         vp.cam.tx = 0
         vp.cam.ty = 0
+        vp.cam.tz = 0
       }
       hideTip()
       coreTip.value = null

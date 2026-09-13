@@ -20,7 +20,7 @@ export const pickNode = (c: PickCtx, sx: number, sy: number): Node | null => {
   let bz = -1
   for (const n of c.nodes) {
     if (c.hardOut(n)) continue
-    const [nx, ny, dz] = c.vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const [nx, ny, dz] = c.vp.w2s(n.bx + n.ox, n.by + n.oy, n.bz)
     const rr = Math.max(6, c.nodeRadius(n) * c.vp.cam.s * dz) + 4
     const d = Math.hypot(sx - nx, sy - ny)
     if (d >= rr) continue
@@ -40,7 +40,7 @@ export const pickSat = (c: PickCtx, sx: number, sy: number): SatHit | null => {
   let bd = 1e9
   for (const n of c.nodes) {
     if (!n.repo.contributors.length || c.hardOut(n)) continue
-    const [nx, ny, dz] = c.vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const [nx, ny, dz] = c.vp.w2s(n.bx + n.ox, n.by + n.oy, n.bz)
     const nr = c.nodeRadius(n) * c.vp.cam.s * dz
     n.repo.contributors.forEach((p, i) => {
       const [fx, fy] = satScreen(c.vp, n, i, nx, ny, nr, c.now)

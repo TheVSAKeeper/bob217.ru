@@ -22,7 +22,7 @@ export const paintNodes = (f: Frame): void => {
   for (const n of f.nodes) {
     const intro = f.intro(n.introDelay, 420)
     if (intro <= 0) continue
-    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy, n.bz)
     const hv = f.hover === n
     const g = f.domGlow(n.repo.domain)
     const wave = f.pulseWave(n.dist)
@@ -80,7 +80,7 @@ export const paintNodeLabels = (f: Frame): void => {
   for (const n of f.nodes) {
     const intro = f.intro(n.introDelay, 420)
     if (intro <= 0 || f.hardOut(n)) continue
-    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy)
+    const [sx, sy, dz] = vp.w2s(n.bx + n.ox, n.by + n.oy, n.bz)
     if (dz < LABEL_DEPTH && !f.bright.has(n)) continue
     const show = near
       ? Math.max(zoomIn, clamp01((dz - NEAR_FROM) / (NEAR_FULL - NEAR_FROM)))
