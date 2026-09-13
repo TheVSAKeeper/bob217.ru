@@ -169,6 +169,7 @@ onBeforeUnmount(() => {
   inset: 0;
   display: block;
   cursor: grab;
+  touch-action: none;
 }
 
 .map-canvas.grabbing {

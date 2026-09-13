@@ -584,10 +584,36 @@ export function useRepoMapScene(params: SceneParams) {
   }
 
   let tStart: [number, number] | null = null
+  let pinch: { d0: number; s0: number; wx: number; wy: number } | null = null
+
+  const touchPair = (e: TouchEvent): { mx: number; my: number; d: number } | null => {
+    const a = e.targetTouches[0]
+    const b = e.targetTouches[1]
+    if (!a || !b) return null
+    const [ax, ay] = localXY(a)
+    const [bx, by] = localXY(b)
+    const mx = (ax + bx) / 2
+    const my = (ay + by) / 2
+    return { mx, my, d: Math.hypot(bx - ax, by - ay) }
+  }
+
+  const startPinch = (e: TouchEvent): void => {
+    const p = touchPair(e)
+    if (!p) return
+    const [wx, wy] = vp.s2w(p.mx, p.my)
+    pinch = { d0: Math.max(1, p.d), s0: vp.cam.s, wx, wy }
+    dolly = false
+    tStart = null
+  }
 
   const onTouchStart = (e: TouchEvent): void => {
-    const touch = e.touches[0]
-    if (e.touches.length !== 1 || !touch) return
+    if (e.targetTouches.length >= 2) {
+      startPinch(e)
+      return
+    }
+    const touch = e.targetTouches[0]
+    if (e.targetTouches.length !== 1 || !touch) return
+    pinch = null
     const [sx, sy] = localXY(touch)
     const c = pickCtx()
     const n = pickNode(c, sx, sy)
@@ -609,8 +635,27 @@ export function useRepoMapScene(params: SceneParams) {
   }
 
   const onTouchMove = (e: TouchEvent): void => {
-    const touch = e.touches[0]
-    if (!tStart || e.touches.length !== 1 || !touch) return
+    if (e.targetTouches.length >= 2) {
+      if (!pinch) startPinch(e)
+      const p = touchPair(e)
+      if (!pinch || !p) return
+      const ns = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, (pinch.s0 * p.d) / pinch.d0))
+      vp.cam.s = ns
+      vp.cam.ts = ns
+      vp.cam.x = pinch.wx - (p.mx - vp.W / 2) / ns
+      vp.cam.y = pinch.wy - (p.my - vp.H / 2) / ns
+      vp.cam.tx = vp.cam.x
+      vp.cam.ty = vp.cam.y
+      return
+    }
+    const touch = e.targetTouches[0]
+    if (e.targetTouches.length !== 1 || !touch) return
+    if (pinch) {
+      pinch = null
+      tStart = localXY(touch)
+      return
+    }
+    if (!tStart) return
     const [sx, sy] = localXY(touch)
     const w1 = vp.s2w(tStart[0], tStart[1])
     const w2 = vp.s2w(sx, sy)
@@ -621,7 +666,18 @@ export function useRepoMapScene(params: SceneParams) {
     tStart = [sx, sy]
   }
 
-  const onTouchEnd = (): void => {
+  const onTouchEnd = (e: TouchEvent): void => {
+    if (e.targetTouches.length >= 2) {
+      startPinch(e)
+      return
+    }
+    const touch = e.targetTouches[0]
+    if (touch) {
+      pinch = null
+      tStart = localXY(touch)
+      return
+    }
+    pinch = null
     tStart = null
   }
 
@@ -645,6 +701,7 @@ export function useRepoMapScene(params: SceneParams) {
     canvas.addEventListener('touchstart', onTouchStart, { passive: true })
     canvas.addEventListener('touchmove', onTouchMove, { passive: true })
     canvas.addEventListener('touchend', onTouchEnd)
+    canvas.addEventListener('touchcancel', onTouchEnd)
     raf = requestAnimationFrame(tick)
 
     return () => {
@@ -658,6 +715,7 @@ export function useRepoMapScene(params: SceneParams) {
       canvas.removeEventListener('touchstart', onTouchStart)
       canvas.removeEventListener('touchmove', onTouchMove)
       canvas.removeEventListener('touchend', onTouchEnd)
+      canvas.removeEventListener('touchcancel', onTouchEnd)
     }
   }
 
