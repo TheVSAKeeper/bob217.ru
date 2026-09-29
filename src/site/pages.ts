@@ -10,6 +10,7 @@ interface PageMeta {
   title: string
   description: string
   navLabel?: string
+  footerOnly?: boolean
   sectionSummary?: string
   priority?: number
   noindex?: boolean
@@ -110,6 +111,7 @@ const PAGES = {
     description:
       'Игровое время Escape from Tarkov и таймеры крафтов: когда выходить в рейд и когда забирать выхлоп.',
     navLabel: 'Тарков',
+    footerOnly: true,
     sectionSummary: 'игровое время и таймеры крафтов',
     priority: 0.5,
   },
@@ -141,14 +143,39 @@ export type NavPageName = {
   [Name in SitePageName]: (typeof PAGES)[Name] extends { navLabel: string } ? Name : never
 }[SitePageName]
 
+export type HeaderNavPageName = Exclude<
+  NavPageName,
+  {
+    [Name in SitePageName]: (typeof PAGES)[Name] extends { footerOnly: true } ? Name : never
+  }[SitePageName]
+>
+
 export interface NavPage {
   name: NavPageName
   path: string
   label: string
+  footerOnly: boolean
+}
+
+export interface HeaderNavPage extends NavPage {
+  name: HeaderNavPageName
 }
 
 export const NAV_PAGES: readonly NavPage[] = SITE_PAGES.flatMap((page) =>
-  page.navLabel ? [{ name: page.name as NavPageName, path: page.path, label: page.navLabel }] : [],
+  page.navLabel
+    ? [
+        {
+          name: page.name as NavPageName,
+          path: page.path,
+          label: page.navLabel,
+          footerOnly: page.footerOnly ?? false,
+        },
+      ]
+    : [],
+)
+
+export const HEADER_NAV_PAGES: readonly HeaderNavPage[] = NAV_PAGES.filter(
+  (page): page is HeaderNavPage => !page.footerOnly,
 )
 
 const SECTION_ORDER: readonly SitePageName[] = [

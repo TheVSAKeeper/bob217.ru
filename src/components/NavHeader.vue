@@ -7,7 +7,6 @@ import {
   Info,
   Heart,
   PiggyBank,
-  Clock,
   GitPullRequest,
   GitCommitHorizontal,
   CircleDot,
@@ -16,7 +15,7 @@ import {
   FolderGit2,
   type LucideIcon,
 } from 'lucide-vue-next'
-import { NAV_PAGES, type NavPageName } from '@/site/pages'
+import { HEADER_NAV_PAGES, type HeaderNavPageName } from '@/site/pages'
 import { useNavOverflow } from '@/composables/useNavOverflow'
 
 const route = useRoute()
@@ -26,7 +25,7 @@ const isReady = ref(false)
 const toggleButton = ref<HTMLButtonElement | null>(null)
 const { compact } = useNavOverflow(useTemplateRef<HTMLElement>('navContainer'))
 
-const NAV_ICONS: Record<NavPageName, LucideIcon> = {
+const NAV_ICONS: Record<HeaderNavPageName, LucideIcon> = {
   home: Home,
   donate: Heart,
   resume: FileText,
@@ -37,10 +36,9 @@ const NAV_ICONS: Record<NavPageName, LucideIcon> = {
   issues: CircleDot,
   releases: Package,
   repos: Network,
-  tarkov: Clock,
 }
 
-const navLinks = NAV_PAGES.map((page) => ({ ...page, icon: NAV_ICONS[page.name] }))
+const navLinks = HEADER_NAV_PAGES.map((page) => ({ ...page, icon: NAV_ICONS[page.name] }))
 
 const toggleMenu = (): void => {
   isMenuOpen.value = !isMenuOpen.value
