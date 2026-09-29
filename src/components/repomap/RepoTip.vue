@@ -77,7 +77,7 @@ const rows = computed<[string, string][]>(() => {
 .code {
   font-weight: 700;
   letter-spacing: 0.18em;
-  color: var(--tip-accent);
+  color: color-mix(in srgb, var(--tip-accent) 75%, var(--color-text-primary));
 }
 
 .dom {

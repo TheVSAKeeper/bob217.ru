@@ -115,7 +115,7 @@ const toggleTail = (): void => {
 }
 
 .repo {
-  color: var(--repo-color);
+  color: color-mix(in srgb, var(--repo-color) 75%, var(--color-text-primary));
   text-decoration: none;
   letter-spacing: 0.03em;
 }
@@ -153,6 +153,7 @@ const toggleTail = (): void => {
 
 .more {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--spacing-sm);
   width: 100%;
@@ -170,7 +171,7 @@ const toggleTail = (): void => {
 
 .more:hover .cmd,
 .more:focus-visible .cmd {
-  color: var(--repo-color, var(--color-accent));
+  color: color-mix(in srgb, var(--repo-color, var(--color-accent)) 75%, var(--color-text-primary));
 }
 
 .more:hover .hint,
@@ -187,5 +188,9 @@ const toggleTail = (): void => {
 .hint {
   white-space: nowrap;
   transition: color var(--transition-fast);
+}
+
+.hint {
+  margin-left: auto;
 }
 </style>

@@ -249,8 +249,15 @@ const hash = useScramble(props.row.hash, 200 + Math.min(props.index * 40, 400))
   color: var(--color-text-muted);
 }
 
-.ref.lang {
-  color: var(--ref);
+.ref.lang::before {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.5ch;
+  border-radius: var(--radius-full);
+  background: var(--ref);
+  vertical-align: 0.05em;
 }
 
 .text {

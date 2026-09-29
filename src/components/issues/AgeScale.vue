@@ -61,7 +61,7 @@ defineProps<{
 }
 
 .hint {
-  opacity: 0.7;
+  color: var(--color-text-tertiary);
 }
 
 .ends {
@@ -149,7 +149,7 @@ defineProps<{
 .tip {
   position: absolute;
   bottom: calc(100% + 6px);
-  left: 50%;
+  left: calc(var(--x) * 100%);
   padding: 2px var(--spacing-sm);
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
@@ -160,7 +160,8 @@ defineProps<{
   border: 1px solid var(--color-bg-tertiary);
   border-radius: var(--radius-sm);
   opacity: 0;
-  transform: translate(-50%, 4px);
+  transform: translate(calc(var(--x) * -100%), 4px);
+  transform-origin: calc(var(--x) * 100%) 100%;
   pointer-events: none;
   transition:
     opacity var(--transition-fast),
@@ -169,6 +170,6 @@ defineProps<{
 
 .dot:hover .tip {
   opacity: 1;
-  transform: translate(-50%, 0) scale(0.72);
+  transform: translate(calc(var(--x) * -100%), 0) scale(0.72);
 }
 </style>

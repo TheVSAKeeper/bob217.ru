@@ -153,7 +153,6 @@ const sections = computed<Section[]>(() =>
   display: flex;
   align-items: center;
   gap: 0.7ch;
-  opacity: 0.75;
 }
 
 .dot {

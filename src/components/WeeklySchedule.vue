@@ -191,8 +191,11 @@ const merged = computed(() => days.value.some((d) => d.merges && (d.isPast || d.
   padding-bottom: var(--spacing-md);
 }
 
-.day.is-past .day-body {
-  opacity: 0.45;
+.day.is-past .day-name,
+.day.is-past .day-date,
+.day.is-past .day-text,
+.day.is-past .chip {
+  color: var(--color-text-tertiary);
 }
 
 .day.is-today .day-body {
@@ -256,9 +259,13 @@ const merged = computed(() => days.value.some((d) => d.merges && (d.isPast || d.
   color: var(--color-link);
 }
 
-.day-text a:hover {
+.day.is-past .day-text a {
+  color: color-mix(in srgb, var(--color-link) 80%, var(--color-bg-primary));
+}
+
+.day-text a:hover,
+.day.is-past .day-text a:hover {
   color: var(--color-link-hover);
-  text-decoration: underline;
 }
 
 .tail-text {
@@ -267,8 +274,7 @@ const merged = computed(() => days.value.some((d) => d.merges && (d.isPast || d.
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   letter-spacing: 0.12em;
-  color: var(--color-text-muted);
-  opacity: 0.7;
+  color: var(--color-text-tertiary);
 }
 
 @media (max-width: 720px) {

@@ -23,13 +23,17 @@ const span = computed(() => {
       <span class="range">{{ span }}</span>
     </figcaption>
 
-    <div class="bars typed" aria-hidden="true">
+    <div class="bars typed" aria-hidden="true" :style="{ '--n': bars.length }">
       <i
-        v-for="bar in bars"
+        v-for="(bar, i) in bars"
         :key="bar.key"
         class="bar"
         :class="{ peak: bar.count === peak }"
-        :style="{ '--h': `${Math.max(bar.level * 100, 7)}%`, '--lvl': bar.level }"
+        :style="{
+          '--h': `${Math.max(bar.level * 100, 7)}%`,
+          '--lvl': bar.level,
+          '--x': bars.length > 1 ? i / (bars.length - 1) : 0.5,
+        }"
       >
         <b class="tip">{{ bar.label }} · {{ bar.count }}</b>
       </i>
@@ -59,13 +63,13 @@ const span = computed(() => {
 
 .range {
   white-space: nowrap;
-  opacity: 0.7;
+  color: var(--color-text-tertiary);
 }
 
 .bars {
   display: flex;
   align-items: flex-end;
-  gap: 2px;
+  gap: min(2px, 100% / var(--n, 1) / 3);
   height: 58px;
   padding-bottom: 1px;
   border-bottom: 1px solid var(--color-bg-tertiary);
@@ -76,7 +80,7 @@ const span = computed(() => {
 .bar {
   position: relative;
   flex: 1;
-  min-width: 2px;
+  min-width: 0;
   height: var(--h);
   border-radius: 1px 1px 0 0;
   background: color-mix(
@@ -102,7 +106,7 @@ const span = computed(() => {
 .tip {
   position: absolute;
   bottom: calc(100% + 6px);
-  left: 50%;
+  left: calc(var(--x) * 100%);
   z-index: var(--z-tooltip);
   padding: 2px var(--spacing-sm);
   font-family: var(--font-family-mono);
@@ -114,7 +118,7 @@ const span = computed(() => {
   border: 1px solid var(--color-bg-tertiary);
   border-radius: var(--radius-sm);
   opacity: 0;
-  transform: translate(-50%, 4px);
+  transform: translate(calc(var(--x) * -100%), 4px);
   pointer-events: none;
   transition:
     opacity var(--transition-fast),
@@ -123,7 +127,7 @@ const span = computed(() => {
 
 .bar:hover .tip {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: translate(calc(var(--x) * -100%), 0);
 }
 
 @media (max-width: 720px) {

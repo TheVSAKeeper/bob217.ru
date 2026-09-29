@@ -167,15 +167,6 @@ onMounted(load)
   color: var(--color-text-muted);
 }
 
-.lede a {
-  color: var(--color-link);
-  text-decoration: none;
-}
-
-.lede a:hover {
-  text-decoration: underline;
-}
-
 .stage {
   position: relative;
   min-height: 120px;
@@ -260,7 +251,7 @@ onMounted(load)
 }
 
 .repo {
-  color: var(--repo-color);
+  color: color-mix(in srgb, var(--repo-color) 75%, var(--color-text-primary));
   text-decoration: none;
   letter-spacing: 0.03em;
 }

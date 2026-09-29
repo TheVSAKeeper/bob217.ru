@@ -140,7 +140,7 @@ const sha = useScramble(props.row.commit.short, 200 + Math.min(props.index * 22,
 }
 
 .repo {
-  color: var(--repo-color);
+  color: color-mix(in srgb, var(--repo-color) 75%, var(--color-text-primary));
   text-decoration: none;
   opacity: 0.85;
 }

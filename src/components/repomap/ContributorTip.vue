@@ -65,7 +65,7 @@ defineProps<{
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--tip-accent);
+  color: color-mix(in srgb, var(--tip-accent) 75%, var(--color-text-primary));
   margin-bottom: 3px;
 }
 
@@ -90,7 +90,7 @@ b {
   font-size: 24px;
   font-weight: 700;
   line-height: 1;
-  color: var(--tip-accent);
+  color: color-mix(in srgb, var(--tip-accent) 75%, var(--color-text-primary));
   font-variant-numeric: tabular-nums;
 }
 

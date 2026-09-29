@@ -25,6 +25,12 @@ a:hover {
   color: var(--color-link-hover);
 }
 
+p a:is(:not([class]), [class='']) {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
 h1 {
   font-family: var(--font-family-heading);
   font-size: var(--font-size-4xl);

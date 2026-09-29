@@ -344,8 +344,19 @@ defineProps<{
 }
 
 .chip.lang {
-  border-color: color-mix(in srgb, var(--ref) 45%, transparent);
-  color: var(--ref);
+  border-color: color-mix(in srgb, var(--ref) 55%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.chip.lang::before {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.6ch;
+  border-radius: var(--radius-full);
+  background: var(--ref);
+  vertical-align: 0.05em;
 }
 
 .more {
