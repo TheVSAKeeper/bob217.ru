@@ -131,16 +131,26 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   z-index: var(--z-sticky);
-  background: transparent;
-  transition:
-    background var(--transition-base),
-    box-shadow var(--transition-base);
+  transition: box-shadow var(--transition-base);
+}
+
+.nav-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(33, 33, 33, 0.95);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transition: opacity var(--transition-base);
 }
 
 .nav-header.scrolled {
-  background: rgba(33, 33, 33, 0.95);
-  backdrop-filter: blur(10px);
   box-shadow: var(--shadow-md);
+}
+
+.nav-header.scrolled::before {
+  opacity: 1;
 }
 
 .nav-container {
