@@ -23,6 +23,7 @@ const isMenuOpen = ref(false)
 const isScrolled = ref(false)
 const isReady = ref(false)
 const toggleButton = ref<HTMLButtonElement | null>(null)
+const menu = useTemplateRef<HTMLElement>('menu')
 const { compact } = useNavOverflow(useTemplateRef<HTMLElement>('navContainer'))
 
 const NAV_ICONS: Record<HeaderNavPageName, LucideIcon> = {
@@ -54,8 +55,26 @@ const handleScroll = (): void => {
   isScrolled.value = window.scrollY > 20
 }
 
+const trapFocus = (event: KeyboardEvent): void => {
+  const links = menu.value?.querySelectorAll<HTMLElement>('a[href]')
+  if (!toggleButton.value || !links?.length) return
+  const first = toggleButton.value
+  const last = links.item(links.length - 1)
+  const target = event.shiftKey ? last : first
+  const edge = event.shiftKey ? first : last
+  const outside = !menu.value?.contains(document.activeElement) && document.activeElement !== first
+  if (document.activeElement !== edge && !outside) return
+  event.preventDefault()
+  target.focus()
+}
+
 const handleKeydown = (event: KeyboardEvent): void => {
-  if (event.key !== 'Escape' || !isMenuOpen.value) return
+  if (!isMenuOpen.value) return
+  if (event.key === 'Tab') {
+    trapFocus(event)
+    return
+  }
+  if (event.key !== 'Escape') return
   closeMenu()
   toggleButton.value?.focus()
 }
@@ -85,7 +104,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <header :class="['nav-header', { scrolled: isScrolled, compact, ready: isReady }]">
+  <header
+    :class="['nav-header', { scrolled: isScrolled, compact, ready: isReady, open: isMenuOpen }]"
+  >
     <nav ref="navContainer" class="nav-container" aria-label="Основная навигация">
       <RouterLink to="/" class="nav-logo" @click="closeMenu">
         <PiggyBank class="logo-icon" :size="28" />
@@ -106,7 +127,7 @@ onBeforeUnmount(() => {
         <span class="hamburger-line"></span>
       </button>
 
-      <div id="nav-menu" :class="['nav-menu', { open: isMenuOpen }]">
+      <div id="nav-menu" ref="menu" :class="['nav-menu', { open: isMenuOpen }]">
         <RouterLink
           v-for="link in navLinks"
           :key="link.path"
@@ -131,7 +152,9 @@ onBeforeUnmount(() => {
   left: 0;
   right: 0;
   z-index: var(--z-sticky);
-  transition: box-shadow var(--transition-base);
+  transition:
+    box-shadow var(--transition-base),
+    z-index 0.3s step-end;
 }
 
 .nav-header::before {
@@ -140,9 +163,15 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: -1;
   background: rgba(33, 33, 33, 0.95);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   opacity: 0;
   transition: opacity var(--transition-base);
+}
+
+.nav-header.open {
+  z-index: var(--z-modal);
+  transition: box-shadow var(--transition-base);
 }
 
 .nav-header.scrolled {

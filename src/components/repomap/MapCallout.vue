@@ -138,6 +138,7 @@ const wire = computed(() => {
   width: var(--tip-w);
   padding: 10px 13px 11px;
   background: rgba(24, 24, 27, 0.92);
+  -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
   border: 1px solid var(--color-bg-tertiary);
   border-radius: var(--radius-md);

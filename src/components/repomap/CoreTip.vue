@@ -85,6 +85,7 @@ const cells = computed<[number, string][]>(() => [
   z-index: var(--z-tooltip);
   pointer-events: none;
   background: rgba(24, 24, 27, 0.92);
+  -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-md);

@@ -28,6 +28,7 @@ defineProps<{
   border: 1px solid var(--color-bg-tertiary);
   border-radius: var(--radius-md);
   background: rgba(28, 28, 28, 0.86);
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
   box-shadow: var(--shadow-md);
   font-family: var(--font-family-mono);
