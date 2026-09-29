@@ -31,10 +31,10 @@ const bootText = [
 
 onMounted(async () => {
   for (const line of bootText) {
-    await new Promise((r) => setTimeout(r, Math.random() * 400 + 150))
+    await new Promise((r) => setTimeout(r, Math.random() * 150 + 75))
     lines.value.push(line)
   }
-  await new Promise((r) => setTimeout(r, 1000))
+  await new Promise((r) => setTimeout(r, 400))
   isComplete.value = true
   emit('ready')
 })

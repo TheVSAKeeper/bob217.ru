@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ref } from 'vue'
 import GraphLanes from '@/components/log/GraphLanes.vue'
 import type { CommitRow } from '@/composables/useCommitLog'
 import { useScramble } from '@/composables/useScramble'
@@ -9,7 +10,12 @@ const props = defineProps<{
   head?: boolean
 }>()
 
-const sha = useScramble(props.row.commit.short, 200 + Math.min(props.index * 22, 520))
+const SCRAMBLED_ROWS = 12
+
+const sha =
+  props.index < SCRAMBLED_ROWS
+    ? useScramble(props.row.commit.short, 200 + props.index * 22)
+    : ref(props.row.commit.short)
 </script>
 
 <template>
