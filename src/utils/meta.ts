@@ -1,5 +1,7 @@
 import type { RouteLocationNormalized } from 'vue-router'
-import { SITE_DESCRIPTION, SITE_ORIGIN, SITE_TITLE } from '@/site/pages'
+import { SITE_DESCRIPTION, SITE_TITLE, siteOrigin } from '@/site/pages'
+
+export const SITE_ORIGIN = siteOrigin(import.meta.env.VITE_SITE_ORIGIN)
 
 const upsertMeta = (attr: 'name' | 'property', key: string, content: string): void => {
   let tag = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`)

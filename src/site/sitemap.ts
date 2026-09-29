@@ -1,10 +1,10 @@
-import { SITE_ORIGIN, SITE_PAGES } from './pages'
+import { SITE_PAGES } from './pages'
 
 const DEFAULT_PRIORITY = 0.5
 
-export const buildSitemap = (): string => {
+export const buildSitemap = (origin: string): string => {
   const urls = SITE_PAGES.filter((page) => !page.noindex).map((page) => {
-    const loc = page.path === '/' ? `${SITE_ORIGIN}/` : SITE_ORIGIN + page.path
+    const loc = page.path === '/' ? `${origin}/` : origin + page.path
     const priority = (page.priority ?? DEFAULT_PRIORITY).toFixed(1)
     return ['  <url>', `    <loc>${loc}</loc>`, `    <priority>${priority}</priority>`, '  </url>']
   })
@@ -17,3 +17,13 @@ export const buildSitemap = (): string => {
     '',
   ].join('\n')
 }
+
+export const buildRobots = (origin: string): string =>
+  [
+    'User-agent: *',
+    'Allow: /',
+    ...SITE_PAGES.filter((page) => page.noindex).map((page) => `Disallow: ${page.path}`),
+    '',
+    `Sitemap: ${origin}/sitemap.xml`,
+    '',
+  ].join('\n')

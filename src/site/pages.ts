@@ -1,4 +1,6 @@
-export const SITE_ORIGIN = 'https://bob217.ru'
+export const DEFAULT_SITE_ORIGIN = 'https://bob217.ru'
+export const siteOrigin = (value: string | undefined): string =>
+  value?.trim() ? new URL(value.trim()).origin : DEFAULT_SITE_ORIGIN
 export const SITE_TITLE = 'bob217 – Дот нет помойка и другие проекты'
 export const SITE_DESCRIPTION =
   'Стримы про программирование, пет-проекты на C# и .NET, игры и всякая дрисня от bobito217'
