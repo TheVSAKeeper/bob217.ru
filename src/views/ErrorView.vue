@@ -14,7 +14,8 @@ const { phaseClass, start, print } = useCmdReplay(() => 280)
 
 <template>
   <div class="err">
-    <main class="term term--danger" :class="phaseClass">
+    <section class="term term--danger" :class="phaseClass">
+      <h1 class="sr-only">500 – внутренняя ошибка сервера</h1>
       <p class="eyebrow"><span class="h">##</span> error</p>
       <CmdLine @run="start" @done="print">curl -sSf {{ SITE_ORIGIN }}</CmdLine>
       <div class="code cmd-out">500</div>
@@ -24,7 +25,7 @@ const { phaseClass, start, print } = useCmdReplay(() => 280)
         <button class="cmd-btn" @click="goBack"><span class="p">$</span> cd -</button>
         <button class="cmd-btn" @click="goHome"><span class="p">$</span> cd ~/</button>
       </div>
-    </main>
+    </section>
   </div>
 </template>
 

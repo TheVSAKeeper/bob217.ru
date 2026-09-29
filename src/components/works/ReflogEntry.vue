@@ -26,7 +26,7 @@ const hash = useScramble(props.row.hash, 200 + Math.min(props.index * 40, 400))
         <span v-if="index === 0" class="badge">HEAD</span>
       </p>
 
-      <h3 class="title">{{ row.entry.title }}</h3>
+      <h2 class="title">{{ row.entry.title }}</h2>
 
       <p class="refs">
         <span
