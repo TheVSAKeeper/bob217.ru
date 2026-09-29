@@ -5,6 +5,9 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { constants } from 'zlib'
 import { compression, defineAlgorithm } from 'vite-plugin-compression2'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fillHomeHtml, fillPageHtml, pageHtmlFile, PRERENDERED_PAGES } from './src/site/pageHtml'
 import { buildRobots, buildSitemap } from './src/site/sitemap'
 import { siteOrigin } from './src/site/pages'
 
@@ -17,10 +20,27 @@ const sitemap = (origin: string): Plugin => ({
   },
 })
 
-const siteOriginHtml = (origin: string): Plugin => ({
-  name: 'bob217-site-origin',
-  transformIndexHtml: (html) => html.replaceAll('%SITE_ORIGIN%', origin),
-})
+const pageHtml = (origin: string): Plugin => {
+  let template = ''
+  return {
+    name: 'bob217-page-html',
+    transformIndexHtml: {
+      order: 'post',
+      handler: (html) => {
+        template = html
+        return fillHomeHtml(html, origin)
+      },
+    },
+    writeBundle(options) {
+      if (!options.dir) return
+      for (const page of PRERENDERED_PAGES) {
+        const file = join(options.dir, pageHtmlFile(page))
+        mkdirSync(dirname(file), { recursive: true })
+        writeFileSync(file, fillPageHtml(template, page, origin))
+      }
+    },
+  }
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -32,7 +52,7 @@ export default defineConfig(({ mode }) => {
         launchEditor: env.LAUNCH_EDITOR || 'code',
       }),
       sitemap(origin),
-      siteOriginHtml(origin),
+      pageHtml(origin),
       compression({
         algorithms: [
           defineAlgorithm('gzip', { level: 9 }),
