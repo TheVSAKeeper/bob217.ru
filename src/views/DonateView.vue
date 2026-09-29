@@ -49,7 +49,7 @@ const copyAddress = (): void => {
             <span class="kind">(push)</span>
           </p>
           <p class="note">пожертвования можно кидать сюды</p>
-          <img class="qr" src="/img/qr.png" alt="QR код donate.stream" />
+          <img class="qr" src="/img/qr.png" width="693" height="696" alt="QR код donate.stream" />
         </article>
 
         <article class="remote cmd-out" style="--print-delay: 760ms">
@@ -69,7 +69,7 @@ const copyAddress = (): void => {
               <template v-else># адрес в буфере</template>
             </span>
           </p>
-          <img class="qr" src="/img/usdc.png" alt="QR код USDT BEP20" />
+          <img class="qr" src="/img/usdc.png" width="720" height="720" alt="QR код USDT BEP20" />
         </article>
       </div>
     </div>
