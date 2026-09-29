@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   Home,
@@ -17,11 +17,14 @@ import {
   type LucideIcon,
 } from 'lucide-vue-next'
 import { NAV_PAGES, type NavPageName } from '@/site/pages'
+import { useNavOverflow } from '@/composables/useNavOverflow'
 
 const route = useRoute()
 const isMenuOpen = ref(false)
 const isScrolled = ref(false)
+const isReady = ref(false)
 const toggleButton = ref<HTMLButtonElement | null>(null)
+const { compact } = useNavOverflow(useTemplateRef<HTMLElement>('navContainer'))
 
 const NAV_ICONS: Record<NavPageName, LucideIcon> = {
   home: Home,
@@ -59,6 +62,10 @@ const handleKeydown = (event: KeyboardEvent): void => {
   toggleButton.value?.focus()
 }
 
+watch(compact, (isCompact) => {
+  if (!isCompact) closeMenu()
+})
+
 const isActive = (path: string): boolean => {
   return route.path === path
 }
@@ -67,6 +74,9 @@ onMounted(() => {
   window.addEventListener('scroll', handleScroll)
   window.addEventListener('keydown', handleKeydown)
   handleScroll()
+  requestAnimationFrame(() => {
+    isReady.value = true
+  })
 })
 
 onBeforeUnmount(() => {
@@ -77,8 +87,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <header :class="['nav-header', { scrolled: isScrolled }]">
-    <nav class="nav-container" aria-label="Основная навигация">
+  <header :class="['nav-header', { scrolled: isScrolled, compact, ready: isReady }]">
+    <nav ref="navContainer" class="nav-container" aria-label="Основная навигация">
       <RouterLink to="/" class="nav-logo" @click="closeMenu">
         <PiggyBank class="logo-icon" :size="28" />
         <span class="logo-text">bob217</span>
@@ -261,47 +271,49 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-@media (max-width: 768px) {
-  .nav-toggle {
-    display: flex;
-  }
+.compact .nav-toggle {
+  display: flex;
+}
 
-  .nav-menu {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    gap: var(--spacing-md);
-    width: 280px;
-    padding: var(--spacing-xl);
-    background: var(--color-bg-secondary);
-    transform: translateX(100%);
-    visibility: hidden;
-    transition:
-      transform var(--transition-base),
-      visibility var(--transition-base);
-    z-index: var(--z-sticky);
-  }
+.compact .nav-menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: safe center;
+  gap: var(--spacing-md);
+  overflow-y: auto;
+  width: 280px;
+  padding: var(--spacing-xl);
+  background: var(--color-bg-secondary);
+  transform: translateX(100%);
+  visibility: hidden;
+  z-index: var(--z-sticky);
+}
 
-  .nav-menu.open {
-    transform: translateX(0);
-    visibility: visible;
-  }
+.ready.compact .nav-menu {
+  transition:
+    transform var(--transition-base),
+    visibility var(--transition-base);
+}
 
-  .nav-link {
-    padding: var(--spacing-md) var(--spacing-lg);
-    font-size: var(--font-size-lg);
-  }
+.compact .nav-menu.open {
+  transform: translateX(0);
+  visibility: visible;
+}
 
-  .nav-overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: calc(var(--z-sticky) - 1);
-  }
+.compact .nav-link {
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-lg);
+}
+
+.compact .nav-overlay {
+  display: block;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: calc(var(--z-sticky) - 1);
 }
 </style>

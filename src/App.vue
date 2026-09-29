@@ -1,8 +1,12 @@
 <script lang="ts" setup>
-import { RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 import NavHeader from '@/components/NavHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import ScrollToTop from '@/components/ScrollToTop.vue'
+
+const route = useRoute()
+const isRoutePending = computed(() => route.matched.length === 0)
 </script>
 
 <template>
@@ -18,7 +22,7 @@ import ScrollToTop from '@/components/ScrollToTop.vue'
       </RouterView>
     </main>
 
-    <AppFooter />
+    <AppFooter :class="{ 'route-pending': isRoutePending }" />
     <ScrollToTop />
   </div>
 </template>
@@ -33,6 +37,10 @@ import ScrollToTop from '@/components/ScrollToTop.vue'
 .main-content {
   flex: 1;
   padding-top: var(--nav-height);
+}
+
+.route-pending {
+  visibility: hidden;
 }
 
 .skip-link {

@@ -29,7 +29,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="about" :class="phaseClass">
+  <div class="about" :class="[phaseClass, { booting: view === 'boot' }]">
     <div class="about-container">
       <header class="about-header">
         <CmdLine @run="start" @done="replay">git shortlog -s --all --no-merges</CmdLine>
@@ -216,6 +216,10 @@ onMounted(load)
   margin-top: var(--spacing-2xl);
   padding-top: var(--spacing-lg);
   border-top: 1px solid var(--color-bg-tertiary);
+}
+
+.about.booting .config {
+  visibility: hidden;
 }
 
 .md-head {

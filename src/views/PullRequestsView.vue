@@ -30,7 +30,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="pulls" :class="phaseClass">
+  <div class="pulls" :class="[phaseClass, { booting: view === 'boot' }]">
     <div class="pulls-container">
       <header class="pulls-header">
         <CmdLine @run="start" @done="replay"
@@ -479,6 +479,11 @@ onMounted(load)
   gap: var(--spacing-md);
   margin: var(--spacing-xl) 0 0;
   padding-left: var(--rail-w);
+}
+
+.pulls.booting .head,
+.pulls.booting .foot {
+  visibility: hidden;
 }
 
 .foot-note {
